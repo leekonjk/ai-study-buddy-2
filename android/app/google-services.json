@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "679903159402",
+    "project_id": "studnet-ai-buddy",
+    "storage_bucket": "studnet-ai-buddy.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:679903159402:android:ffa7e1b6488db7692a9613",
+        "android_client_info": {
+          "package_name": "com.example.studnet_ai_buddy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZrKLasZtS6gZAdbplbBNIdFPM6PBp2XU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

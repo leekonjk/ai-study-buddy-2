@@ -5,6 +5,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/services/local_storage_service.dart';
+import 'package:studnet_ai_buddy/domain/entities/academic_profile.dart';
+import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/presentation/auth/auth_gate.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
@@ -72,14 +74,44 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Future<void> _completeOnboarding() async {
     final localStorageService = getIt<LocalStorageService>();
-    await localStorageService.setIntroSeen(true);
-    await localStorageService.setOnboarded(true);
+    final academicRepository = getIt<AcademicRepository>();
 
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const AuthGate()),
-      );
-    }
+    // Show loading? (Ideally we should show a loading indicator)
+
+    // Create profile from data
+    final profile = AcademicProfile(
+      id: '', // Repository generates ID
+      studentName: _onboardingData['name'] as String? ?? 'Student',
+      programName: _onboardingData['program'] as String? ?? 'General Studies',
+      currentSemester: 1, // Default
+      enrolledSubjectIds: [],
+      enrollmentDate: DateTime.now(),
+    );
+
+    // Save profile to Firestore
+    final result = await academicRepository.saveAcademicProfile(profile);
+
+    result.fold(
+      onSuccess: (_) async {
+        await localStorageService.setIntroSeen(true);
+        await localStorageService.setOnboarded(true);
+
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AuthGate()),
+          );
+        }
+      },
+      onFailure: (failure) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to save profile: ${failure.message}'),
+            ),
+          );
+        }
+      },
+    );
   }
 
   void _updateData(String key, dynamic value) {
@@ -155,7 +187,8 @@ class OnboardingStepController extends InheritedWidget {
   });
 
   static OnboardingStepController? of(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<OnboardingStepController>();
+    return context
+        .dependOnInheritedWidgetOfExactType<OnboardingStepController>();
   }
 
   @override
@@ -199,4 +232,3 @@ class OnboardingStepWrapper extends StatelessWidget {
     );
   }
 }
-

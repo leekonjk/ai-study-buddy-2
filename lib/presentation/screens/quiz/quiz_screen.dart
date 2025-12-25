@@ -9,6 +9,7 @@ import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/entities/quiz.dart';
 import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/quiz/quiz_viewmodel.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/common/lottie_loading.dart';
 
 class QuizScreen extends StatelessWidget {
@@ -97,7 +98,10 @@ class _QuizContent extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(right: AppSpacing.md),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -208,7 +212,8 @@ class _QuizView extends StatelessWidget {
                   style: AppTypography.body2,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                if (state.currentQuestion != null) _QuestionCard(question: state.currentQuestion!),
+                if (state.currentQuestion != null)
+                  _QuestionCard(question: state.currentQuestion!),
                 const SizedBox(height: AppSpacing.lg),
                 if (state.currentQuestion != null)
                   _AnswerOptions(
@@ -232,10 +237,13 @@ class _QuizView extends StatelessWidget {
               if (!state.isFirstQuestion)
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => context.read<QuizViewModel>().previousQuestion(),
+                    onPressed: () =>
+                        context.read<QuizViewModel>().previousQuestion(),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: AppColors.primary),
-                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.md,
+                      ),
                     ),
                     child: const Text('Previous'),
                   ),
@@ -286,10 +294,7 @@ class _QuestionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.border, width: 1),
       ),
-      child: Text(
-        question.questionText,
-        style: AppTypography.subtitle1,
-      ),
+      child: Text(question.questionText, style: AppTypography.subtitle1),
     );
   }
 }
@@ -299,10 +304,7 @@ class _AnswerOptions extends StatelessWidget {
   final QuizQuestion question;
   final int? selectedIndex;
 
-  const _AnswerOptions({
-    required this.question,
-    this.selectedIndex,
-  });
+  const _AnswerOptions({required this.question, this.selectedIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -312,7 +314,8 @@ class _AnswerOptions extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: InkWell(
-            onTap: () => context.read<QuizViewModel>().selectCurrentAnswer(index),
+            onTap: () =>
+                context.read<QuizViewModel>().selectCurrentAnswer(index),
             borderRadius: BorderRadius.circular(AppRadius.md),
             child: Container(
               padding: const EdgeInsets.all(AppSpacing.md),
@@ -328,7 +331,8 @@ class _AnswerOptions extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
@@ -339,7 +343,9 @@ class _AnswerOptions extends StatelessWidget {
                       child: Text(
                         String.fromCharCode(65 + index),
                         style: AppTypography.subtitle2.copyWith(
-                          color: isSelected ? AppColors.textInverse : AppColors.textPrimary,
+                          color: isSelected
+                              ? AppColors.textInverse
+                              : AppColors.textPrimary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -350,11 +356,25 @@ class _AnswerOptions extends StatelessWidget {
                     child: Text(
                       question.options[index],
                       style: AppTypography.body1.copyWith(
-                        color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textPrimary,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                   ),
+                  if (isSelected)
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.primary,
+                      size: 24,
+                    ).animate().scale(
+                      begin: const Offset(0, 0),
+                      end: const Offset(1, 1),
+                      duration: 200.ms,
+                    ),
                 ],
               ),
             ),
@@ -370,10 +390,7 @@ class _Timer extends StatefulWidget {
   final int timeLimitMinutes;
   final DateTime startedAt;
 
-  const _Timer({
-    required this.timeLimitMinutes,
-    required this.startedAt,
-  });
+  const _Timer({required this.timeLimitMinutes, required this.startedAt});
 
   @override
   State<_Timer> createState() => _TimerState();
@@ -390,7 +407,8 @@ class _TimerState extends State<_Timer> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
         setState(() {
-          _remaining = Duration(minutes: widget.timeLimitMinutes) -
+          _remaining =
+              Duration(minutes: widget.timeLimitMinutes) -
               DateTime.now().difference(widget.startedAt);
           if (_remaining.isNegative) {
             _remaining = Duration.zero;
@@ -414,11 +432,14 @@ class _TimerState extends State<_Timer> {
     final color = _remaining.inMinutes < 2
         ? AppColors.error
         : _remaining.inMinutes < 5
-            ? AppColors.warning
-            : AppColors.success;
+        ? AppColors.warning
+        : AppColors.success;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -447,8 +468,8 @@ class _ResultView extends StatelessWidget {
     final color = score >= 80
         ? AppColors.success
         : score >= 60
-            ? AppColors.warning
-            : AppColors.error;
+        ? AppColors.warning
+        : AppColors.error;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -471,10 +492,7 @@ class _ResultView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text(
-            _getTitle(score),
-            style: AppTypography.headline2,
-          ),
+          Text(_getTitle(score), style: AppTypography.headline2),
           const SizedBox(height: AppSpacing.sm),
           Text(
             '${result.correctAnswers} of ${result.totalQuestions} correct',
@@ -490,22 +508,32 @@ class _ResultView extends StatelessWidget {
                     : AppColors.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppRadius.md),
                 border: Border.all(
-                  color: score >= (quiz!.passingScore! * 100) ? AppColors.success : AppColors.error,
+                  color: score >= (quiz!.passingScore! * 100)
+                      ? AppColors.success
+                      : AppColors.error,
                 ),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    score >= (quiz!.passingScore! * 100) ? Icons.check_circle : Icons.cancel,
-                    color: score >= (quiz!.passingScore! * 100) ? AppColors.success : AppColors.error,
+                    score >= (quiz!.passingScore! * 100)
+                        ? Icons.check_circle
+                        : Icons.cancel,
+                    color: score >= (quiz!.passingScore! * 100)
+                        ? AppColors.success
+                        : AppColors.error,
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Text(
-                    score >= (quiz!.passingScore! * 100) ? 'Passed' : 'Not Passed',
+                    score >= (quiz!.passingScore! * 100)
+                        ? 'Passed'
+                        : 'Not Passed',
                     style: AppTypography.body2.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: score >= (quiz!.passingScore! * 100) ? AppColors.success : AppColors.error,
+                      color: score >= (quiz!.passingScore! * 100)
+                          ? AppColors.success
+                          : AppColors.error,
                     ),
                   ),
                 ],
@@ -556,10 +584,18 @@ class _ErrorView extends StatelessWidget {
                 color: AppColors.error.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.error_outline, color: AppColors.error, size: 32),
+              child: const Icon(
+                Icons.error_outline,
+                color: AppColors.error,
+                size: 32,
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            Text(message, style: AppTypography.body1, textAlign: TextAlign.center),
+            Text(
+              message,
+              style: AppTypography.body1,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: AppSpacing.lg),
             ElevatedButton(onPressed: onRetry, child: const Text('Go Back')),
           ],
@@ -588,7 +624,11 @@ class _NoQuizView extends StatelessWidget {
                 color: AppColors.primary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.quiz_outlined, color: AppColors.primary, size: 32),
+              child: const Icon(
+                Icons.quiz_outlined,
+                color: AppColors.primary,
+                size: 32,
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text('No quiz available', style: AppTypography.headline2),

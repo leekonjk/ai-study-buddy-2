@@ -2,6 +2,7 @@
 /// Enhanced chat interface matching StudySmarter design with mascot and quick actions.
 library;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
@@ -16,10 +17,7 @@ import 'package:studnet_ai_buddy/presentation/widgets/core/quick_action_button.d
 class AIChatScreen extends StatefulWidget {
   final String? subjectTitle;
 
-  const AIChatScreen({
-    super.key,
-    this.subjectTitle,
-  });
+  const AIChatScreen({super.key, this.subjectTitle});
 
   @override
   State<AIChatScreen> createState() => _AIChatScreenState();
@@ -46,11 +44,13 @@ class _AIChatScreenState extends State<AIChatScreen> {
         ? "Great! To create flashcards for your ${widget.subjectTitle} exam, could you tell me which topics or areas you'd like to focus on? Also, let me know the difficulty level (easy, medium, hard) and how many flashcards you'd prefer."
         : "Hello! I'm your AI Study Buddy. How can I help you today?";
 
-    _messages.add(ChatMessageData(
-      text: greeting,
-      isUser: false,
-      quickActions: _getInitialQuickActions(),
-    ));
+    _messages.add(
+      ChatMessageData(
+        text: greeting,
+        isUser: false,
+        quickActions: _getInitialQuickActions(),
+      ),
+    );
   }
 
   List<QuickActionData> _getInitialQuickActions() {
@@ -84,10 +84,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     if (text.isEmpty || _messageCount >= _maxMessages) return;
 
     setState(() {
-      _messages.add(ChatMessageData(
-        text: text,
-        isUser: true,
-      ));
+      _messages.add(ChatMessageData(text: text, isUser: true));
       _messageCount++;
       _isTyping = true;
       _isThinking = true;
@@ -107,11 +104,13 @@ class _AIChatScreenState extends State<AIChatScreen> {
         setState(() {
           _isTyping = false;
           _isThinking = false;
-          _messages.add(ChatMessageData(
-            text: response,
-            isUser: false,
-            quickActions: _getQuickActionsForResponse(text, response),
-          ));
+          _messages.add(
+            ChatMessageData(
+              text: response,
+              isUser: false,
+              quickActions: _getQuickActionsForResponse(text, response),
+            ),
+          );
         });
         _scrollToBottom();
       }
@@ -120,11 +119,13 @@ class _AIChatScreenState extends State<AIChatScreen> {
         setState(() {
           _isTyping = false;
           _isThinking = false;
-          _messages.add(ChatMessageData(
-            text: _getFallbackResponse(text),
-            isUser: false,
-            quickActions: _getQuickActionsForResponse(text, ''),
-          ));
+          _messages.add(
+            ChatMessageData(
+              text: _getFallbackResponse(text),
+              isUser: false,
+              quickActions: _getQuickActionsForResponse(text, ''),
+            ),
+          );
         });
         _scrollToBottom();
       }
@@ -138,7 +139,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
     final lowerMessage = userMessage.toLowerCase();
     final lowerResponse = aiResponse.toLowerCase();
 
-    if (lowerMessage.contains('flashcard') || lowerResponse.contains('flashcard')) {
+    if (lowerMessage.contains('flashcard') ||
+        lowerResponse.contains('flashcard')) {
       return [
         QuickActionData(
           text: 'Specify topics and difficulty',
@@ -180,12 +182,79 @@ class _AIChatScreenState extends State<AIChatScreen> {
     });
   }
 
-  void _handleFileUpload() {
-    // TODO: Implement file picker
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('File upload coming soon'),
-        backgroundColor: StudyBuddyColors.cardBackground,
+  void _handleFileUpload() async {
+    // File picker for uploading attachments
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'jpg', 'png'],
+      );
+      if (result != null && result.files.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Selected: ${result.files.first.name}'),
+              backgroundColor: StudyBuddyColors.success,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('File upload coming soon'),
+            backgroundColor: StudyBuddyColors.cardBackground,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showChatMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: StudyBuddyColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: StudyBuddyColors.textPrimary,
+              ),
+              title: const Text(
+                'Clear Chat',
+                style: TextStyle(color: StudyBuddyColors.textPrimary),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _messages.clear());
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.share_rounded,
+                color: StudyBuddyColors.textPrimary,
+              ),
+              title: const Text(
+                'Share Conversation',
+                style: TextStyle(color: StudyBuddyColors.textPrimary),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Sharing coming soon!')),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
@@ -227,9 +296,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   ),
                 ),
                 IconButton(
-                  onPressed: () {
-                    // TODO: Show menu
-                  },
+                  onPressed: () => _showChatMenu(),
                   icon: const Icon(
                     Icons.more_vert_rounded,
                     color: StudyBuddyColors.textPrimary,
@@ -430,10 +497,10 @@ class _AIChatScreenState extends State<AIChatScreen> {
             text: message.text,
             isUser: message.isUser,
             quickActions: message.quickActions
-                ?.map((action) => QuickActionButton(
-                      text: action.text,
-                      onTap: action.onTap,
-                    ))
+                ?.map(
+                  (action) =>
+                      QuickActionButton(text: action.text, onTap: action.onTap),
+                )
                 .toList(),
           ),
         ),
@@ -481,9 +548,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
             ],
           ),
           SizedBox(width: 8),
-          Expanded(
-            child: TypingIndicator(),
-          ),
+          Expanded(child: TypingIndicator()),
         ],
       ),
     );
@@ -496,11 +561,7 @@ class ChatMessageData {
   final bool isUser;
   final List<QuickActionData>? quickActions;
 
-  ChatMessageData({
-    required this.text,
-    this.isUser = false,
-    this.quickActions,
-  });
+  ChatMessageData({required this.text, this.isUser = false, this.quickActions});
 }
 
 /// Quick action data model.
@@ -508,8 +569,5 @@ class QuickActionData {
   final String text;
   final VoidCallback onTap;
 
-  QuickActionData({
-    required this.text,
-    required this.onTap,
-  });
+  QuickActionData({required this.text, required this.onTap});
 }

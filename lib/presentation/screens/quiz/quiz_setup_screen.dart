@@ -11,10 +11,7 @@ import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart'
 class QuizSetupScreen extends StatefulWidget {
   final String? subjectId;
 
-  const QuizSetupScreen({
-    super.key,
-    this.subjectId,
-  });
+  const QuizSetupScreen({super.key, this.subjectId});
 
   @override
   State<QuizSetupScreen> createState() => _QuizSetupScreenState();
@@ -28,9 +25,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
   void _startQuiz() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => QuizScreen(
-          subjectId: widget.subjectId ?? '',
-        ),
+        builder: (_) => QuizScreen(subjectId: widget.subjectId ?? ''),
       ),
     );
   }
@@ -139,11 +134,23 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    _buildDifficultyOption('Easy', 'easy', StudyBuddyColors.success),
+                    _buildDifficultyOption(
+                      'Easy',
+                      'easy',
+                      StudyBuddyColors.success,
+                    ),
                     const SizedBox(width: 12),
-                    _buildDifficultyOption('Medium', 'medium', StudyBuddyColors.warning),
+                    _buildDifficultyOption(
+                      'Medium',
+                      'medium',
+                      StudyBuddyColors.warning,
+                    ),
                     const SizedBox(width: 12),
-                    _buildDifficultyOption('Hard', 'hard', StudyBuddyColors.error),
+                    _buildDifficultyOption(
+                      'Hard',
+                      'hard',
+                      StudyBuddyColors.error,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 32),
@@ -189,7 +196,7 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                             _timedMode = value;
                           });
                         },
-                        activeColor: StudyBuddyColors.primary,
+                        activeThumbColor: StudyBuddyColors.primary,
                       ),
                     ],
                   ),
@@ -240,7 +247,9 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: isSelected ? color.withOpacity(0.2) : StudyBuddyColors.cardBackground,
+            color: isSelected
+                ? color.withValues(alpha: 0.2)
+                : StudyBuddyColors.cardBackground,
             borderRadius: StudyBuddyDecorations.borderRadiusM,
             border: Border.all(
               color: isSelected ? color : StudyBuddyColors.border,
@@ -261,4 +270,3 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
     );
   }
 }
-

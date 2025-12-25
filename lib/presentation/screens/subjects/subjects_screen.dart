@@ -128,11 +128,58 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Add subject dialog
-        },
+        onPressed: () => _showAddSubjectDialog(),
         backgroundColor: StudyBuddyColors.primary,
         child: const Icon(Icons.add_rounded, color: Colors.white),
+      ),
+    );
+  }
+
+  void _showAddSubjectDialog() {
+    final nameController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: StudyBuddyColors.cardBackground,
+        title: const Text(
+          'Add Subject',
+          style: TextStyle(color: StudyBuddyColors.textPrimary),
+        ),
+        content: TextField(
+          controller: nameController,
+          style: const TextStyle(color: StudyBuddyColors.textPrimary),
+          decoration: InputDecoration(
+            labelText: 'Subject Name',
+            labelStyle: TextStyle(color: StudyBuddyColors.textSecondary),
+            filled: true,
+            fillColor: StudyBuddyColors.background,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Subject "${nameController.text}" created!'),
+                  backgroundColor: StudyBuddyColors.success,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: StudyBuddyColors.primary,
+            ),
+            child: const Text('Create', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
@@ -159,7 +206,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: StudyBuddyColors.primary.withOpacity(0.1),
+                  color: StudyBuddyColors.primary.withValues(alpha: 0.1),
                   borderRadius: StudyBuddyDecorations.borderRadiusM,
                 ),
                 child: const Icon(
@@ -206,4 +253,3 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
     );
   }
 }
-

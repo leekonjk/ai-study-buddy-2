@@ -1,9 +1,9 @@
 /// Service Locator.
 /// Dependency injection setup using get_it.
-/// 
+///
 /// Layer: Infrastructure
 /// Responsibility: Register and provide dependencies across the app.
-/// 
+///
 /// Registration Order:
 /// 1. Firebase services (singletons)
 /// 2. Local services (lazy singletons)
@@ -22,6 +22,9 @@ import 'package:studnet_ai_buddy/domain/repositories/focus_session_repository.da
 import 'package:studnet_ai_buddy/domain/repositories/quiz_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/study_plan_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/study_set_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/note_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/flashcard_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/resource_repository.dart';
 
 // Repository Implementations
 import 'package:studnet_ai_buddy/data/repositories/academic_repository_impl.dart';
@@ -29,6 +32,9 @@ import 'package:studnet_ai_buddy/data/repositories/focus_session_repository_impl
 import 'package:studnet_ai_buddy/data/repositories/quiz_repository_impl.dart';
 import 'package:studnet_ai_buddy/data/repositories/study_plan_repository_impl.dart';
 import 'package:studnet_ai_buddy/data/repositories/study_set_repository_impl.dart';
+import 'package:studnet_ai_buddy/data/repositories/note_repository_impl.dart';
+import 'package:studnet_ai_buddy/data/repositories/flashcard_repository_impl.dart';
+import 'package:studnet_ai_buddy/data/repositories/resource_repository_impl.dart';
 
 // Domain Services
 import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
@@ -53,7 +59,9 @@ import 'package:studnet_ai_buddy/presentation/viewmodels/dashboard/dashboard_vie
 import 'package:studnet_ai_buddy/presentation/viewmodels/focus/focus_session_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/mentor/ai_mentor_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/onboarding/onboarding_viewmodel.dart';
+import 'package:studnet_ai_buddy/presentation/viewmodels/profile/profile_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/quiz/quiz_viewmodel.dart';
+import 'package:studnet_ai_buddy/presentation/viewmodels/planner/ai_planner_viewmodel.dart';
 
 /// Global service locator instance.
 final GetIt getIt = GetIt.instance;
@@ -85,9 +93,7 @@ void _registerFirebaseServices() {
   );
 
   // FirebaseAuth singleton
-  getIt.registerLazySingleton<FirebaseAuth>(
-    () => FirebaseAuth.instance,
-  );
+  getIt.registerLazySingleton<FirebaseAuth>(() => FirebaseAuth.instance);
 }
 
 /// Registers local services as lazy singletons.
@@ -103,9 +109,7 @@ void _registerLocalServices() {
   );
 
   // FileUploadService
-  getIt.registerLazySingleton<FileUploadService>(
-    () => FileUploadServiceImpl(),
-  );
+  getIt.registerLazySingleton<FileUploadService>(() => FileUploadServiceImpl());
 }
 
 /// Registers repository implementations as lazy singletons.
@@ -149,6 +153,30 @@ void _registerRepositories() {
       auth: getIt<FirebaseAuth>(),
     ),
   );
+
+  // NoteRepository
+  getIt.registerLazySingleton<NoteRepository>(
+    () => NoteRepositoryImpl(
+      firestore: getIt<FirebaseFirestore>(),
+      auth: getIt<FirebaseAuth>(),
+    ),
+  );
+
+  // FlashcardRepository
+  getIt.registerLazySingleton<FlashcardRepository>(
+    () => FlashcardRepositoryImpl(
+      firestore: getIt<FirebaseFirestore>(),
+      auth: getIt<FirebaseAuth>(),
+    ),
+  );
+
+  // ResourceRepository
+  getIt.registerLazySingleton<ResourceRepository>(
+    () => ResourceRepositoryImpl(
+      firestore: getIt<FirebaseFirestore>(),
+      auth: getIt<FirebaseAuth>(),
+    ),
+  );
 }
 
 /// Registers domain services as lazy singletons.
@@ -170,9 +198,7 @@ void _registerDomainServices() {
   );
 
   // AIMentorService
-  getIt.registerLazySingleton<AIMentorService>(
-    () => AIMentorServiceImpl(),
-  );
+  getIt.registerLazySingleton<AIMentorService>(() => AIMentorServiceImpl());
 }
 
 /// Registers ViewModels as factories (new instance each time).
@@ -180,9 +206,7 @@ void _registerDomainServices() {
 void _registerViewModels() {
   // OnboardingViewModel
   getIt.registerFactory<OnboardingViewModel>(
-    () => OnboardingViewModel(
-      academicRepository: getIt<AcademicRepository>(),
-    ),
+    () => OnboardingViewModel(academicRepository: getIt<AcademicRepository>()),
   );
 
   // DashboardViewModel
@@ -211,8 +235,23 @@ void _registerViewModels() {
 
   // AIMentorViewModel
   getIt.registerFactory<AIMentorViewModel>(
-    () => AIMentorViewModel(
-      aiMentorService: getIt<AIMentorService>(),
+    () => AIMentorViewModel(aiMentorService: getIt<AIMentorService>()),
+  );
+
+  // AIPlannerViewModel
+  getIt.registerFactory<AIPlannerViewModel>(
+    () => AIPlannerViewModel(
+      studyPlanRepository: getIt<StudyPlanRepository>(),
+      academicRepository: getIt<AcademicRepository>(),
+    ),
+  );
+
+  // ProfileViewModel
+  getIt.registerFactory<ProfileViewModel>(
+    () => ProfileViewModel(
+      academicRepository: getIt<AcademicRepository>(),
+      focusSessionRepository: getIt<FocusSessionRepository>(),
+      auth: getIt<FirebaseAuth>(),
     ),
   );
 }
@@ -226,10 +265,16 @@ Future<void> resetDependencies() async {
 AcademicRepository get academicRepository => getIt<AcademicRepository>();
 QuizRepository get quizRepository => getIt<QuizRepository>();
 StudyPlanRepository get studyPlanRepository => getIt<StudyPlanRepository>();
-FocusSessionRepository get focusSessionRepository => getIt<FocusSessionRepository>();
+FocusSessionRepository get focusSessionRepository =>
+    getIt<FocusSessionRepository>();
+FlashcardRepository get flashcardRepository => getIt<FlashcardRepository>();
+StudySetRepository get studySetRepository => getIt<StudySetRepository>();
+NoteRepository get noteRepository => getIt<NoteRepository>();
+ResourceRepository get resourceRepository => getIt<ResourceRepository>();
 
 /// Convenience accessor for domain services.
-KnowledgeEstimationService get knowledgeEstimationService => getIt<KnowledgeEstimationService>();
+KnowledgeEstimationService get knowledgeEstimationService =>
+    getIt<KnowledgeEstimationService>();
 StudyPlannerService get studyPlannerService => getIt<StudyPlannerService>();
 RiskAnalysisService get riskAnalysisService => getIt<RiskAnalysisService>();
 
@@ -237,5 +282,6 @@ RiskAnalysisService get riskAnalysisService => getIt<RiskAnalysisService>();
 OnboardingViewModel get onboardingViewModel => getIt<OnboardingViewModel>();
 DashboardViewModel get dashboardViewModel => getIt<DashboardViewModel>();
 QuizViewModel get quizViewModel => getIt<QuizViewModel>();
-FocusSessionViewModel get focusSessionViewModel => getIt<FocusSessionViewModel>();
+FocusSessionViewModel get focusSessionViewModel =>
+    getIt<FocusSessionViewModel>();
 AIMentorViewModel get aiMentorViewModel => getIt<AIMentorViewModel>();

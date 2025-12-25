@@ -130,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: StudyBuddyColors.primary.withOpacity(0.1),
+                      color: StudyBuddyColors.primary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -166,10 +166,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: StudyBuddyColors.error.withOpacity(0.1),
+                        color: StudyBuddyColors.error.withValues(alpha: 0.1),
                         borderRadius: StudyBuddyDecorations.borderRadiusM,
                         border: Border.all(
-                          color: StudyBuddyColors.error.withOpacity(0.5),
+                          color: StudyBuddyColors.error.withValues(alpha: 0.5),
                         ),
                       ),
                       child: Row(
@@ -201,7 +201,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
-                          style: const TextStyle(color: StudyBuddyColors.textPrimary),
+                          style: const TextStyle(
+                            color: StudyBuddyColors.textPrimary,
+                          ),
                           decoration: StudyBuddyDecorations.inputDecoration(
                             hintText: 'Email',
                             prefixIcon: const Icon(
@@ -223,7 +225,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
-                          style: const TextStyle(color: StudyBuddyColors.textPrimary),
+                          style: const TextStyle(
+                            color: StudyBuddyColors.textPrimary,
+                          ),
                           decoration: StudyBuddyDecorations.inputDecoration(
                             hintText: 'Password',
                             prefixIcon: const Icon(
@@ -278,7 +282,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               width: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
                               ),
                             )
                           : const Text(
@@ -364,4 +370,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

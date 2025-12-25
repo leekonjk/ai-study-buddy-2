@@ -7,12 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
-import 'package:studnet_ai_buddy/presentation/theme/app_colors.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/common/lottie_loading.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/dashboard/dashboard_viewmodel.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/cards/minimal_stat_card.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/cards/minimal_tip_card.dart';
+import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -58,7 +58,9 @@ class _DashboardContent extends StatelessWidget {
                           padding: const EdgeInsets.all(AppSpacing.md),
                           child: _ErrorBanner(
                             message: state.errorMessage!,
-                            onDismiss: () => context.read<DashboardViewModel>().dismissError(),
+                            onDismiss: () => context
+                                .read<DashboardViewModel>()
+                                .dismissError(),
                           ),
                         ),
                       ),
@@ -68,9 +70,9 @@ class _DashboardContent extends StatelessWidget {
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.only(top: AppSpacing.md),
-                          child: MinimalTipCard(tip: state.tipOfTheDay)
-                              .animate()
-                              .fadeIn(delay: 100.ms, duration: 300.ms),
+                          child: MinimalTipCard(
+                            tip: state.tipOfTheDay,
+                          ).animate().fadeIn(delay: 100.ms, duration: 300.ms),
                         ),
                       ),
 
@@ -103,7 +105,9 @@ class _DashboardContent extends StatelessWidget {
                               style: AppTypography.headline3,
                             ),
                             TextButton(
-                              onPressed: () => Navigator.of(context).pushNamed('/study-plan'),
+                              onPressed: () => Navigator.of(
+                                context,
+                              ).pushNamed('/study-plan'),
                               child: Text(
                                 'View All',
                                 style: AppTypography.body2.copyWith(
@@ -120,10 +124,12 @@ class _DashboardContent extends StatelessWidget {
                     if (state.focusTask != null)
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                          child: _TaskCard(task: state.focusTask!)
-                              .animate()
-                              .fadeIn(delay: 300.ms, duration: 300.ms),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                          ),
+                          child: _TaskCard(
+                            task: state.focusTask!,
+                          ).animate().fadeIn(delay: 300.ms, duration: 300.ms),
                         ),
                       ),
 
@@ -145,17 +151,18 @@ class _DashboardContent extends StatelessWidget {
 
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                        child: _QuickActions()
-                            .animate()
-                            .fadeIn(delay: 400.ms, duration: 300.ms),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                        ),
+                        child: _QuickActions().animate().fadeIn(
+                          delay: 400.ms,
+                          duration: 300.ms,
+                        ),
                       ),
                     ),
 
                     // Bottom padding
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: 100),
-                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
                   ],
                 ),
               ),
@@ -169,10 +176,7 @@ class _Header extends StatelessWidget {
   final String greeting;
   final String name;
 
-  const _Header({
-    required this.greeting,
-    required this.name,
-  });
+  const _Header({required this.greeting, required this.name});
 
   @override
   Widget build(BuildContext context) {
@@ -187,21 +191,14 @@ class _Header extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.person,
-              color: AppColors.primary,
-              size: 24,
-            ),
+            child: const Icon(Icons.person, color: AppColors.primary, size: 24),
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  greeting,
-                  style: AppTypography.body2,
-                ),
+                Text(greeting, style: AppTypography.body2),
                 const SizedBox(height: 4),
                 Text(
                   name.isNotEmpty ? name : 'Student',
@@ -306,15 +303,9 @@ class _TaskCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  task.title ?? 'Task',
-                  style: AppTypography.subtitle1,
-                ),
+                Text(task.title ?? 'Task', style: AppTypography.subtitle1),
                 const SizedBox(height: 4),
-                Text(
-                  'Due today',
-                  style: AppTypography.body2,
-                ),
+                Text('Due today', style: AppTypography.body2),
               ],
             ),
           ),
@@ -336,25 +327,43 @@ class _QuickActions extends StatelessWidget {
           icon: Icons.quiz,
           label: 'Quiz',
           color: AppColors.primary,
-          onTap: () {},
+          onTap: () => Navigator.pushNamed(context, AppRoutes.quizSetup),
         ),
         _ActionButton(
           icon: Icons.psychology,
           label: 'AI Mentor',
           color: AppColors.secondary,
-          onTap: () {},
+          onTap: () => Navigator.pushNamed(context, AppRoutes.aiMentor),
         ),
         _ActionButton(
           icon: Icons.timer,
           label: 'Focus',
           color: AppColors.accent,
-          onTap: () {},
+          onTap: () => Navigator.pushNamed(context, AppRoutes.focusSession),
         ),
         _ActionButton(
           icon: Icons.auto_awesome,
           label: 'AI Plan',
           color: AppColors.highlight,
-          onTap: () {},
+          onTap: () => Navigator.pushNamed(context, AppRoutes.aiPlanner),
+        ),
+        _ActionButton(
+          icon: Icons.note_alt_rounded,
+          label: 'Notes',
+          color: Colors.green,
+          onTap: () => Navigator.pushNamed(context, AppRoutes.notes),
+        ),
+        _ActionButton(
+          icon: Icons.bar_chart_rounded,
+          label: 'Stats',
+          color: Colors.blue,
+          onTap: () => Navigator.pushNamed(context, AppRoutes.statistics),
+        ),
+        _ActionButton(
+          icon: Icons.emoji_events_rounded,
+          label: 'Badges',
+          color: Colors.orange,
+          onTap: () => Navigator.pushNamed(context, AppRoutes.achievements),
         ),
       ],
     );
@@ -381,7 +390,11 @@ class _ActionButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: Container(
-        width: (MediaQuery.of(context).size.width - (AppSpacing.md * 2) - AppSpacing.sm) / 2,
+        width:
+            (MediaQuery.of(context).size.width -
+                (AppSpacing.md * 2) -
+                AppSpacing.sm) /
+            2,
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
@@ -400,10 +413,7 @@ class _ActionButton extends StatelessWidget {
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(height: AppSpacing.sm),
-            Text(
-              label,
-              style: AppTypography.body2,
-            ),
+            Text(label, style: AppTypography.body2),
           ],
         ),
       ),
@@ -416,10 +426,7 @@ class _ErrorBanner extends StatelessWidget {
   final String message;
   final VoidCallback onDismiss;
 
-  const _ErrorBanner({
-    required this.message,
-    required this.onDismiss,
-  });
+  const _ErrorBanner({required this.message, required this.onDismiss});
 
   @override
   Widget build(BuildContext context) {

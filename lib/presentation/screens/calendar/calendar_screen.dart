@@ -106,19 +106,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-                      .map((day) => SizedBox(
-                            width: 40,
-                            child: Center(
-                              child: Text(
-                                day,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: StudyBuddyColors.textSecondary,
-                                ),
+                      .map(
+                        (day) => SizedBox(
+                          width: 40,
+                          child: Center(
+                            child: Text(
+                              day,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: StudyBuddyColors.textSecondary,
                               ),
                             ),
-                          ))
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
               ),
@@ -176,23 +178,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildCalendarGrid() {
-    final firstDayOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
-    final lastDayOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0);
+    final firstDayOfMonth = DateTime(
+      _focusedMonth.year,
+      _focusedMonth.month,
+      1,
+    );
+    final lastDayOfMonth = DateTime(
+      _focusedMonth.year,
+      _focusedMonth.month + 1,
+      0,
+    );
     final startingWeekday = firstDayOfMonth.weekday % 7;
-    
+
     final days = <Widget>[];
-    
+
     // Previous month days
     for (int i = 0; i < startingWeekday; i++) {
       days.add(const SizedBox(width: 40, height: 40));
     }
-    
+
     // Current month days
     for (int day = 1; day <= lastDayOfMonth.day; day++) {
       final date = DateTime(_focusedMonth.year, _focusedMonth.month, day);
       final isSelected = _isSameDay(date, _selectedDate);
       final isToday = _isSameDay(date, DateTime.now());
-      
+
       days.add(
         InkWell(
           onTap: () {
@@ -208,8 +218,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               color: isSelected
                   ? StudyBuddyColors.primary
                   : isToday
-                      ? StudyBuddyColors.primary.withOpacity(0.1)
-                      : null,
+                  ? StudyBuddyColors.primary.withValues(alpha: 0.1)
+                  : null,
               shape: BoxShape.circle,
               border: isToday && !isSelected
                   ? Border.all(color: StudyBuddyColors.primary)
@@ -233,7 +243,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       );
     }
-    
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -254,9 +264,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         decoration: BoxDecoration(
           color: StudyBuddyColors.cardBackground,
           borderRadius: StudyBuddyDecorations.borderRadiusL,
-          border: Border(
-            left: BorderSide(color: color, width: 4),
-          ),
+          border: Border(left: BorderSide(color: color, width: 4)),
         ),
         child: Row(
           children: [
@@ -295,17 +303,45 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   String _getMonthName(DateTime date) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${months[date.month - 1]} ${date.year}';
   }
 
   String _formatDate(DateTime date) {
-    const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const weekdays = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return '${weekdays[date.weekday % 7]}, ${months[date.month - 1]} ${date.day}';
   }
@@ -314,4 +350,3 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 }
-

@@ -1,9 +1,9 @@
 /// Academic Repository Implementation.
 /// Concrete implementation of AcademicRepository interface using Firebase Firestore.
-/// 
+///
 /// Layer: Data
 /// Responsibility: Data operations for academic profile and subjects via Firestore.
-/// 
+///
 /// Firestore Collections Used:
 /// - students: Basic student info (studentId as document ID)
 /// - academic_profiles: Academic program data (studentId as document ID)
@@ -29,8 +29,8 @@ class AcademicRepositoryImpl implements AcademicRepository {
   AcademicRepositoryImpl({
     required FirebaseFirestore firestore,
     required FirebaseAuth auth,
-  })  : _firestore = firestore,
-        _auth = auth;
+  }) : _firestore = firestore,
+       _auth = auth;
 
   String get _currentStudentId => _auth.currentUser?.uid ?? '';
 
@@ -53,10 +53,12 @@ class AcademicRepositoryImpl implements AcademicRepository {
       final profile = _mapDocumentToAcademicProfile(doc);
       return Success(profile);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to fetch academic profile: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to fetch academic profile: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -71,7 +73,7 @@ class AcademicRepositoryImpl implements AcademicRepository {
         debugPrint('ERROR: User ID is empty. Auth state: ${_auth.currentUser}');
         return const Err(NetworkFailure(message: 'User not authenticated'));
       }
-      
+
       final data = _mapAcademicProfileToDocument(profile);
 
       await _firestore
@@ -81,10 +83,12 @@ class AcademicRepositoryImpl implements AcademicRepository {
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to save academic profile: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to save academic profile: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -141,10 +145,12 @@ class AcademicRepositoryImpl implements AcademicRepository {
 
       return Success(subjects);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to fetch subjects: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to fetch subjects: ${e.message}',
+          code: e.code,
+        ),
+      );
     }
   }
 
@@ -170,10 +176,12 @@ class AcademicRepositoryImpl implements AcademicRepository {
 
       return Success(subjects.isNotEmpty);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to check onboarding status: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to check onboarding status: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -188,15 +196,17 @@ class AcademicRepositoryImpl implements AcademicRepository {
           .collection(_studentsCollection)
           .doc(_currentStudentId)
           .set({
-        'lastActiveAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'lastActiveAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to complete onboarding: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to complete onboarding: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -214,18 +224,25 @@ class AcademicRepositoryImpl implements AcademicRepository {
             debugPrint('Profile is null - incomplete');
             return const Success(false);
           }
-          
+
           // Profile is complete if all required fields are populated
-          final hasRequiredFields = profile.studentName.isNotEmpty &&
+          final hasRequiredFields =
+              profile.studentName.isNotEmpty &&
               profile.programName.isNotEmpty &&
               profile.enrolledSubjectIds.isNotEmpty;
-          
+
           debugPrint('Profile validation:');
-          debugPrint('  - studentName: "${profile.studentName}" (${profile.studentName.isNotEmpty ? "✓" : "✗"})');
-          debugPrint('  - programName: "${profile.programName}" (${profile.programName.isNotEmpty ? "✓" : "✗"})');
-          debugPrint('  - subjects: ${profile.enrolledSubjectIds.length} (${profile.enrolledSubjectIds.isNotEmpty ? "✓" : "✗"})');
+          debugPrint(
+            '  - studentName: "${profile.studentName}" (${profile.studentName.isNotEmpty ? "✓" : "✗"})',
+          );
+          debugPrint(
+            '  - programName: "${profile.programName}" (${profile.programName.isNotEmpty ? "✓" : "✗"})',
+          );
+          debugPrint(
+            '  - subjects: ${profile.enrolledSubjectIds.length} (${profile.enrolledSubjectIds.isNotEmpty ? "✓" : "✗"})',
+          );
           debugPrint('Profile complete: $hasRequiredFields');
-          
+
           return Success(hasRequiredFields);
         },
         onFailure: (failure) {
@@ -245,7 +262,7 @@ class AcademicRepositoryImpl implements AcademicRepository {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Maps Firestore document to AcademicProfile domain entity.
-  /// 
+  ///
   /// Firestore schema (academic_profiles):
   /// - studentId: string
   /// - degreeProgram: string
@@ -267,12 +284,14 @@ class AcademicRepositoryImpl implements AcademicRepository {
         .toList();
 
     // Parse timestamps
-    final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final createdAt =
+        (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
     final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
 
     return AcademicProfile(
       id: data['studentId'] as String? ?? doc.id,
-      studentName: data['studentName'] as String? ?? '', // ✅ FIX: Read from Firestore
+      studentName:
+          data['studentName'] as String? ?? '', // ✅ FIX: Read from Firestore
       programName: data['degreeProgram'] as String? ?? '',
       currentSemester: data['semester'] as int? ?? 1,
       enrolledSubjectIds: enrolledSubjectIds,
@@ -282,24 +301,23 @@ class AcademicRepositoryImpl implements AcademicRepository {
   }
 
   /// Maps embedded subject data to Subject domain entity.
-  /// 
+  ///
   /// Firestore schema (subjects array item):
   /// - subjectId: string
   /// - name: string
   /// - creditHours: int
   Subject _mapDocumentToSubject(Map<String, dynamic> data) {
     // Parse topics array
-    final topics = (data['topics'] as List<dynamic>?)
-            ?.map((t) => t.toString())
-            .toList() ??
+    final topics =
+        (data['topics'] as List<dynamic>?)?.map((t) => t.toString()).toList() ??
         [];
 
     return Subject(
       id: data['subjectId'] as String? ?? '',
       name: data['name'] as String? ?? '',
-      code: data['code'] as String? ?? '', 
+      code: data['code'] as String? ?? '',
       creditHours: data['creditHours'] as int? ?? 3,
-      difficulty: SubjectDifficulty.intermediate, 
+      difficulty: SubjectDifficulty.intermediate,
       topicIds: topics,
     );
   }
@@ -311,27 +329,27 @@ class AcademicRepositoryImpl implements AcademicRepository {
   /// Maps AcademicProfile domain entity to Firestore document data.
   Map<String, dynamic> _mapAcademicProfileToDocument(AcademicProfile profile) {
     // Build subjects array from enrolledSubjectIds
-    // Note: This relies on fetching full subject data first, but for seeding 
+    // Note: This relies on fetching full subject data first, but for seeding
     // we assume the logic injects full data. In a real app we'd query a master list.
-    // For now, simpler mapping is acceptable as we don't have the full Subject object 
-    // passed here, only the list of IDs in the entity. 
+    // For now, simpler mapping is acceptable as we don't have the full Subject object
+    // passed here, only the list of IDs in the entity.
     // However, saveSubjects() passes full Subject objects.
-    
+
     // Fallback: This method might lose data if we only rely on IDs.
-    // But since saveSubjects updates the subjects array directly, 
+    // But since saveSubjects updates the subjects array directly,
     // we should rely on saveSubjects for subject updates.
-    
+
     return {
       'studentId': _currentStudentId,
-      'studentName': profile.studentName, 
+      'studentName': profile.studentName,
       'degreeProgram': profile.programName,
       'semester': profile.currentSemester,
-      'institution': '', 
+      'institution': '',
       // 'subjects': ... // We avoid overwriting subjects here to avoid data loss
       // if we only have IDs. The profile save logic should arguably be separate
       // from subject enrollment.
       // But keeping existing logic for now.
-      'dailyStudyMinutes': 120, 
+      'dailyStudyMinutes': 120,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -354,6 +372,7 @@ class AcademicRepositoryImpl implements AcademicRepository {
 
   /// Saves subjects to the academic profile.
   /// Call this during onboarding after subject selection.
+  @override
   Future<Result<void>> saveSubjects(List<Subject> subjects) async {
     try {
       final subjectsData = subjects.map(_mapSubjectToDocument).toList();
@@ -362,16 +381,18 @@ class AcademicRepositoryImpl implements AcademicRepository {
           .collection(_academicProfilesCollection)
           .doc(_currentStudentId)
           .set({
-        'subjects': subjectsData,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'subjects': subjectsData,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to save subjects: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to save subjects: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }

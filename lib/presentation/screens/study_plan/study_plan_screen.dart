@@ -1,6 +1,6 @@
 /// Study Plan Screen.
 /// Weekly study plan view with task details.
-/// 
+///
 /// Layer: Presentation (UI)
 /// Responsibility: Display weekly plan, task list by day.
 /// Binds to: StudyPlanViewModel (to be created)
@@ -21,12 +21,10 @@ class StudyPlanScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Implement with Provider/ChangeNotifierProvider
-    // TODO: Create and bind to StudyPlanViewModel
+    // Study plan functionality is handled by EnhancedAIPlannerScreen
+    // This screen can be extended with Provider/ChangeNotifierProvider when needed
     return const Scaffold(
-      body: Center(
-        child: Text('Study Plan Screen - To be implemented'),
-      ),
+      body: Center(child: Text('Study Plan Screen - To be implemented')),
     );
   }
 }

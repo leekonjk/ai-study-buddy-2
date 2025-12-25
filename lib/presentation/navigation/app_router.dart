@@ -26,6 +26,15 @@ import 'package:studnet_ai_buddy/presentation/screens/quiz/quiz_setup_screen.dar
 import 'package:studnet_ai_buddy/presentation/screens/study_plan/study_plan_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/subjects/subject_detail_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/subjects/subjects_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/notes/notes_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/achievements/achievements_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/statistics/statistics_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/settings/settings_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/quiz/quiz_review_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/study/create_study_set_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/study/add_flashcards_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/study/study_set_detail_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/study/flashcard_screen.dart';
 
 /// Route name constants.
 class AppRoutes {
@@ -51,6 +60,15 @@ class AppRoutes {
   static const String aiPlanner = '/ai-planner';
   static const String profile = '/profile';
   static const String calendar = '/calendar';
+  static const String notes = '/notes';
+  static const String achievements = '/achievements';
+  static const String statistics = '/statistics';
+  static const String settings = '/settings';
+  static const String quizReview = '/quiz-review';
+  static const String createStudySet = '/create-study-set';
+  static const String addFlashcards = '/add-flashcards';
+  static const String studySetDetail = '/study-set-detail';
+  static const String flashcardStudy = '/flashcard-study';
 }
 
 /// App router for navigation.
@@ -98,15 +116,11 @@ class AppRouter {
 
       case AppRoutes.quiz:
         final subjectId = settings.arguments as String?;
-        return AppSlideRightRoute(
-          page: QuizScreen(subjectId: subjectId ?? ''),
-        );
+        return AppSlideRightRoute(page: QuizScreen(subjectId: subjectId ?? ''));
 
       case AppRoutes.quizSetup:
         final subjectId = settings.arguments as String?;
-        return AppSlideRightRoute(
-          page: QuizSetupScreen(subjectId: subjectId),
-        );
+        return AppSlideRightRoute(page: QuizSetupScreen(subjectId: subjectId));
 
       case AppRoutes.focusSession:
         final args = settings.arguments as Map<String, dynamic>?;
@@ -138,12 +152,65 @@ class AppRouter {
       case AppRoutes.calendar:
         return AppSlideRightRoute(page: const CalendarScreen());
 
+      case AppRoutes.notes:
+        return AppSlideRightRoute(page: const NotesScreen());
+
+      case AppRoutes.achievements:
+        return AppSlideRightRoute(page: const AchievementsScreen());
+
+      case AppRoutes.statistics:
+        return AppSlideRightRoute(page: const StatisticsScreen());
+
+      case AppRoutes.settings:
+        return AppSlideRightRoute(page: const SettingsScreen());
+
+      case AppRoutes.quizReview:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return AppSlideRightRoute(
+          page: QuizReviewScreen(
+            quizTitle: args?['quizTitle'] ?? 'Quiz',
+            score: args?['score'] ?? 0,
+            totalQuestions: args?['totalQuestions'] ?? 0,
+          ),
+        );
+
+      case AppRoutes.createStudySet:
+        return AppSlideRightRoute(page: const CreateStudySetScreen());
+
+      case AppRoutes.addFlashcards:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return AppSlideRightRoute(
+          page: AddFlashcardsScreen(
+            studySetTitle: args?['studySetTitle'] ?? '',
+            studySetCategory: args?['studySetCategory'] ?? 'General',
+            studySetDescription: args?['studySetDescription'] ?? '',
+            isPrivate: args?['isPrivate'] ?? true,
+          ),
+        );
+
+      case AppRoutes.studySetDetail:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return AppSlideRightRoute(
+          page: StudySetDetailScreen(
+            studySetId: args?['studySetId'] ?? '',
+            title: args?['title'],
+            category: args?['category'],
+          ),
+        );
+
+      case AppRoutes.flashcardStudy:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return AppSlideRightRoute(
+          page: FlashcardScreen(
+            studySetId: args?['studySetId'] ?? '',
+            studySetTitle: args?['title'] ?? 'Flashcards',
+          ),
+        );
+
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
-            body: Center(
-              child: Text('No route defined for ${settings.name}'),
-            ),
+            body: Center(child: Text('No route defined for ${settings.name}')),
           ),
         );
     }

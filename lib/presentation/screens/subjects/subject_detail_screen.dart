@@ -13,10 +13,7 @@ import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart'
 class SubjectDetailScreen extends StatefulWidget {
   final String subjectId;
 
-  const SubjectDetailScreen({
-    super.key,
-    required this.subjectId,
-  });
+  const SubjectDetailScreen({super.key, required this.subjectId});
 
   @override
   State<SubjectDetailScreen> createState() => _SubjectDetailScreenState();
@@ -37,7 +34,9 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
     final result = await getIt<AcademicRepository>().getAllSubjects();
     result.fold(
       onSuccess: (subjects) {
-        final subject = subjects.where((s) => s.id == widget.subjectId).firstOrNull;
+        final subject = subjects
+            .where((s) => s.id == widget.subjectId)
+            .firstOrNull;
         setState(() {
           _subject = subject;
           _isLoading = false;
@@ -62,8 +61,8 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _subject == null
-                  ? _buildNotFound()
-                  : _buildContent(),
+              ? _buildNotFound()
+              : _buildContent(),
         ),
       ),
     );
@@ -182,9 +181,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                     child: const Center(
                       child: Text(
                         'No topics added yet',
-                        style: TextStyle(
-                          color: StudyBuddyColors.textSecondary,
-                        ),
+                        style: TextStyle(color: StudyBuddyColors.textSecondary),
                       ),
                     ),
                   )
@@ -246,10 +243,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
     );
   }
 
-  Widget _buildStatChip({
-    required IconData icon,
-    required String label,
-  }) {
+  Widget _buildStatChip({required IconData icon, required String label}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -286,7 +280,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: StudyBuddyColors.primary.withOpacity(0.1),
+                color: StudyBuddyColors.primary.withValues(alpha: 0.1),
                 borderRadius: StudyBuddyDecorations.borderRadiusS,
               ),
               child: const Icon(
@@ -328,9 +322,9 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: StudyBuddyDecorations.borderRadiusL,
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
@@ -350,4 +344,3 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
     );
   }
 }
-

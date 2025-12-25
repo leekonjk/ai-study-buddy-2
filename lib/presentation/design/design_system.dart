@@ -4,6 +4,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
+import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
+import 'package:studnet_ai_buddy/presentation/theme/studybuddy_typography.dart';
 
 /// App-wide design system with light and dark themes.
 class AppDesignSystem {
@@ -34,7 +36,7 @@ class AppDesignSystem {
       color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(StudyBuddyDecorations.radiusL),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -43,44 +45,20 @@ class AppDesignSystem {
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(StudyBuddyDecorations.radiusM),
         ),
       ),
     ),
     textTheme: const TextTheme(
-      displayLarge: TextStyle(
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF1E293B),
-      ),
-      headlineLarge: TextStyle(
-        fontSize: 28,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF1E293B),
-      ),
-      headlineMedium: TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF1E293B),
-      ),
-      titleLarge: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF1E293B),
-      ),
-      titleMedium: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: Color(0xFF1E293B),
-      ),
-      bodyLarge: TextStyle(
-        fontSize: 16,
-        color: Color(0xFF475569),
-      ),
-      bodyMedium: TextStyle(
-        fontSize: 14,
-        color: Color(0xFF475569),
-      ),
+      displayLarge: AppTypography.displayLarge,
+      headlineLarge: AppTypography.headlineLarge,
+      headlineMedium: AppTypography.headlineMedium,
+      titleLarge: AppTypography.titleLarge,
+      titleMedium: AppTypography.titleMedium,
+      bodyLarge: AppTypography.bodyLarge,
+      bodyMedium: AppTypography.bodyMedium,
+      bodySmall: AppTypography.bodySmall,
+      labelLarge: AppTypography.labelLarge,
     ),
   );
 
@@ -109,11 +87,8 @@ class AppDesignSystem {
       color: StudyBuddyColors.cardBackground,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(
-          color: StudyBuddyColors.border,
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(StudyBuddyDecorations.radiusL),
+        side: const BorderSide(color: StudyBuddyColors.border, width: 1),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -122,45 +97,25 @@ class AppDesignSystem {
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(StudyBuddyDecorations.radiusM),
         ),
       ),
     ),
-    textTheme: const TextTheme(
-      displayLarge: TextStyle(
-        fontSize: 32,
-        fontWeight: FontWeight.bold,
-        color: StudyBuddyColors.textPrimary,
-      ),
-      headlineLarge: TextStyle(
-        fontSize: 28,
-        fontWeight: FontWeight.bold,
-        color: StudyBuddyColors.textPrimary,
-      ),
-      headlineMedium: TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.w600,
-        color: StudyBuddyColors.textPrimary,
-      ),
-      titleLarge: TextStyle(
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        color: StudyBuddyColors.textPrimary,
-      ),
-      titleMedium: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        color: StudyBuddyColors.textPrimary,
-      ),
-      bodyLarge: TextStyle(
-        fontSize: 16,
-        color: StudyBuddyColors.textSecondary,
-      ),
-      bodyMedium: TextStyle(
-        fontSize: 14,
-        color: StudyBuddyColors.textSecondary,
-      ),
-    ),
+    textTheme:
+        const TextTheme(
+          displayLarge: AppTypography.displayLarge,
+          headlineLarge: AppTypography.headlineLarge,
+          headlineMedium: AppTypography.headlineMedium,
+          titleLarge: AppTypography.titleLarge,
+          titleMedium: AppTypography.titleMedium,
+          bodyLarge: AppTypography.bodyLarge,
+          bodyMedium: AppTypography.bodyMedium,
+          bodySmall: AppTypography.bodySmall,
+          labelLarge: AppTypography.labelLarge,
+        ).apply(
+          bodyColor: StudyBuddyColors.textPrimary,
+          displayColor: StudyBuddyColors.textPrimary,
+        ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: StudyBuddyColors.cardBackground,
       selectedItemColor: StudyBuddyColors.primary,
@@ -170,19 +125,18 @@ class AppDesignSystem {
       filled: true,
       fillColor: StudyBuddyColors.cardBackground,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(StudyBuddyDecorations.radiusM),
         borderSide: const BorderSide(color: StudyBuddyColors.border),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(StudyBuddyDecorations.radiusM),
         borderSide: const BorderSide(color: StudyBuddyColors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(StudyBuddyDecorations.radiusM),
         borderSide: const BorderSide(color: StudyBuddyColors.primary, width: 2),
       ),
       hintStyle: const TextStyle(color: StudyBuddyColors.textTertiary),
     ),
   );
 }
-

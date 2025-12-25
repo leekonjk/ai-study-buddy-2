@@ -1,14 +1,23 @@
 /// File Upload Service Implementation
-/// Mock implementation for file uploads (Firebase Storage integration pending).
+/// Firebase Storage implementation for file uploads.
 library;
 
+import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:studnet_ai_buddy/domain/services/file_upload_service.dart';
 
-/// Mock implementation of FileUploadService.
-/// TODO: Replace with Firebase Storage implementation when firebase_storage is added.
+/// Firebase Storage implementation of FileUploadService.
 class FileUploadServiceImpl implements FileUploadService {
-  FileUploadServiceImpl();
+  final FirebaseStorage _storage;
+  final FirebaseAuth _auth;
+
+  FileUploadServiceImpl({FirebaseStorage? storage, FirebaseAuth? auth})
+    : _storage = storage ?? FirebaseStorage.instance,
+      _auth = auth ?? FirebaseAuth.instance;
+
+  String get _userId => _auth.currentUser?.uid ?? 'anonymous';
 
   @override
   Future<FileUploadResult> uploadFile({
@@ -17,37 +26,64 @@ class FileUploadServiceImpl implements FileUploadService {
     Function(FileUploadProgress)? onProgress,
   }) async {
     try {
-      // TODO: Implement actual file upload using file_picker and Firebase Storage
-      // For now, return mock result
       debugPrint('FileUploadService: Uploading $fileName from $filePath');
 
-      // Simulate upload progress
-      if (onProgress != null) {
-        for (int i = 0; i <= 100; i += 10) {
-          await Future.delayed(const Duration(milliseconds: 100));
-          onProgress(FileUploadProgress(
-            fileId: 'file_${DateTime.now().millisecondsSinceEpoch}',
-            progress: i / 100,
-            bytesUploaded: i * 1000,
-            totalBytes: 1000 * 100,
-          ));
-        }
+      final file = File(filePath);
+      if (!await file.exists()) {
+        throw Exception('File not found: $filePath');
       }
 
-      // In real implementation:
-      // final ref = _storage.ref().child('study_materials/$fileName');
-      // final uploadTask = ref.putFile(File(filePath));
-      // final snapshot = await uploadTask;
-      // final url = await snapshot.ref.getDownloadURL();
+      final fileSize = await file.length();
+      final fileId = '${DateTime.now().millisecondsSinceEpoch}_$fileName';
+      final storagePath = 'study_materials/$_userId/$fileId';
+
+      final ref = _storage.ref().child(storagePath);
+      final uploadTask = ref.putFile(
+        file,
+        SettableMetadata(
+          contentType: _getFileType(fileName),
+          customMetadata: {
+            'originalName': fileName,
+            'uploadedBy': _userId,
+            'uploadedAt': DateTime.now().toIso8601String(),
+          },
+        ),
+      );
+
+      // Listen to upload progress
+      if (onProgress != null) {
+        uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+          final progress = snapshot.bytesTransferred / snapshot.totalBytes;
+          onProgress(
+            FileUploadProgress(
+              fileId: fileId,
+              progress: progress,
+              bytesUploaded: snapshot.bytesTransferred,
+              totalBytes: snapshot.totalBytes,
+            ),
+          );
+        });
+      }
+
+      // Wait for upload to complete
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      debugPrint('FileUploadService: Upload complete. URL: $downloadUrl');
 
       return FileUploadResult(
-        fileId: 'file_${DateTime.now().millisecondsSinceEpoch}',
+        fileId: fileId,
         fileName: fileName,
-        fileUrl: 'https://example.com/files/$fileName',
-        fileSize: 1024 * 100, // Mock size
+        fileUrl: downloadUrl,
+        fileSize: fileSize,
         fileType: _getFileType(fileName),
         uploadedAt: DateTime.now(),
       );
+    } on FirebaseException catch (e) {
+      debugPrint(
+        'FileUploadService: Firebase error uploading file: ${e.message}',
+      );
+      rethrow;
     } catch (e) {
       debugPrint('FileUploadService: Error uploading file: $e');
       rethrow;
@@ -57,10 +93,20 @@ class FileUploadServiceImpl implements FileUploadService {
   @override
   Future<void> deleteFile(String fileId) async {
     try {
-      // TODO: Implement file deletion
       debugPrint('FileUploadService: Deleting file $fileId');
-      // final ref = _storage.ref().child('study_materials/$fileId');
-      // await ref.delete();
+      final storagePath = 'study_materials/$_userId/$fileId';
+      final ref = _storage.ref().child(storagePath);
+      await ref.delete();
+      debugPrint('FileUploadService: File deleted successfully');
+    } on FirebaseException catch (e) {
+      if (e.code == 'object-not-found') {
+        debugPrint('FileUploadService: File not found, may already be deleted');
+        return;
+      }
+      debugPrint(
+        'FileUploadService: Firebase error deleting file: ${e.message}',
+      );
+      rethrow;
     } catch (e) {
       debugPrint('FileUploadService: Error deleting file: $e');
       rethrow;
@@ -70,10 +116,19 @@ class FileUploadServiceImpl implements FileUploadService {
   @override
   Future<String?> getFileUrl(String fileId) async {
     try {
-      // TODO: Implement URL retrieval
-      // final ref = _storage.ref().child('study_materials/$fileId');
-      // return await ref.getDownloadURL();
-      return 'https://example.com/files/$fileId';
+      final storagePath = 'study_materials/$_userId/$fileId';
+      final ref = _storage.ref().child(storagePath);
+      final url = await ref.getDownloadURL();
+      return url;
+    } on FirebaseException catch (e) {
+      if (e.code == 'object-not-found') {
+        debugPrint('FileUploadService: File not found: $fileId');
+        return null;
+      }
+      debugPrint(
+        'FileUploadService: Firebase error getting file URL: ${e.message}',
+      );
+      return null;
     } catch (e) {
       debugPrint('FileUploadService: Error getting file URL: $e');
       return null;
@@ -83,9 +138,27 @@ class FileUploadServiceImpl implements FileUploadService {
   @override
   Future<FileUploadResult?> getFileMetadata(String fileId) async {
     try {
-      // TODO: Implement metadata retrieval
-      // final ref = _storage.ref().child('study_materials/$fileId');
-      // final metadata = await ref.getMetadata();
+      final storagePath = 'study_materials/$_userId/$fileId';
+      final ref = _storage.ref().child(storagePath);
+      final metadata = await ref.getMetadata();
+      final url = await ref.getDownloadURL();
+
+      return FileUploadResult(
+        fileId: fileId,
+        fileName: metadata.customMetadata?['originalName'] ?? fileId,
+        fileUrl: url,
+        fileSize: metadata.size ?? 0,
+        fileType: metadata.contentType ?? 'application/octet-stream',
+        uploadedAt: metadata.timeCreated ?? DateTime.now(),
+      );
+    } on FirebaseException catch (e) {
+      if (e.code == 'object-not-found') {
+        debugPrint('FileUploadService: File not found: $fileId');
+        return null;
+      }
+      debugPrint(
+        'FileUploadService: Firebase error getting metadata: ${e.message}',
+      );
       return null;
     } catch (e) {
       debugPrint('FileUploadService: Error getting file metadata: $e');
@@ -104,9 +177,17 @@ class FileUploadServiceImpl implements FileUploadService {
       case 'ppt':
       case 'pptx':
         return 'application/vnd.ms-powerpoint';
+      case 'txt':
+        return 'text/plain';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
       default:
         return 'application/octet-stream';
     }
   }
 }
-

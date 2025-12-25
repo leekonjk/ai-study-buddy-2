@@ -1,11 +1,11 @@
 /// Gradient Scaffold
-/// Wrapper providing navy gradient background consistent across screens.
+/// Wrapper providing gradient background that responds to theme mode.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 
-/// Scaffold with navy gradient background matching StudySmarter design.
+/// Scaffold with gradient background that adapts to light/dark theme.
 class GradientScaffold extends StatelessWidget {
   final Widget body;
   final PreferredSizeWidget? appBar;
@@ -26,21 +26,26 @@ class GradientScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       extendBody: extendBody,
       extendBodyBehindAppBar: extendBodyBehindAppBar,
       appBar: appBar,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: StudyBuddyColors.backgroundGradient,
+        decoration: BoxDecoration(
+          gradient: isDark
+              ? StudyBuddyColors.backgroundGradient
+              : const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [StudyBuddyColors.lightBackground, Color(0xFFE2E8F0)],
+                ),
         ),
-        child: SafeArea(
-          child: body,
-        ),
+        child: SafeArea(child: body),
       ),
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
     );
   }
 }
-

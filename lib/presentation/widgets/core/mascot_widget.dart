@@ -6,12 +6,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
 /// Mascot expression types
-enum MascotExpression {
-  happy,
-  thinking,
-  speaking,
-  neutral,
-}
+enum MascotExpression { happy, thinking, speaking, neutral }
 
 /// Mascot size variants
 enum MascotSize {
@@ -54,19 +49,15 @@ class _MascotWidgetState extends State<MascotWidget>
       vsync: this,
     )..repeat(reverse: true);
 
-    _glowAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeInOut,
-      ),
-    );
+    _glowAnimation = Tween<double>(
+      begin: 0.3,
+      end: 0.7,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
-    _breathAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeInOut,
-      ),
-    );
+    _breathAnimation = Tween<double>(
+      begin: 0.95,
+      end: 1.05,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -88,9 +79,9 @@ class _MascotWidgetState extends State<MascotWidget>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF06B6D4).withOpacity(
-                        _glowAnimation.value,
-                      ),
+                      color: const Color(
+                        0xFF06B6D4,
+                      ).withValues(alpha: _glowAnimation.value),
                       blurRadius: widget.size.value * 0.8,
                       spreadRadius: widget.size.value * 0.2,
                     ),
@@ -118,10 +109,7 @@ class _MascotPainter extends CustomPainter {
   final MascotExpression expression;
   final double size;
 
-  _MascotPainter({
-    required this.expression,
-    required this.size,
-  });
+  _MascotPainter({required this.expression, required this.size});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -273,8 +261,6 @@ class _MascotPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_MascotPainter oldDelegate) {
-    return oldDelegate.expression != expression ||
-        oldDelegate.size != size;
+    return oldDelegate.expression != expression || oldDelegate.size != size;
   }
 }
-

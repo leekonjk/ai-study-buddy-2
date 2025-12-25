@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
@@ -32,9 +33,7 @@ class ExploreScreen extends StatelessWidget {
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () {
-                      // TODO: Open search
-                    },
+                    onPressed: () => _showSearchDialog(context),
                     icon: const Icon(
                       Icons.search_rounded,
                       color: StudyBuddyColors.textPrimary,
@@ -51,17 +50,13 @@ class ExploreScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: StudyBuddyColors.cardBackground,
                   borderRadius: StudyBuddyDecorations.borderRadiusFull,
-                  border: Border.all(
-                    color: StudyBuddyColors.border,
-                  ),
+                  border: Border.all(color: StudyBuddyColors.border),
                 ),
                 child: const TextField(
                   style: TextStyle(color: StudyBuddyColors.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Search study sets, topics...',
-                    hintStyle: TextStyle(
-                      color: StudyBuddyColors.textTertiary,
-                    ),
+                    hintStyle: TextStyle(color: StudyBuddyColors.textTertiary),
                     border: InputBorder.none,
                     icon: Icon(
                       Icons.search_rounded,
@@ -127,16 +122,69 @@ class ExploreScreen extends StatelessWidget {
         childAspectRatio: 1.5,
       ),
       itemCount: categories.length,
-      itemBuilder: (context, index) {
-        return _buildCategoryCard(categories[index]);
+      itemBuilder: (ctx, index) {
+        return _buildCategoryCard(ctx, categories[index]);
       },
     );
   }
 
-  Widget _buildCategoryCard(String category) {
+  void _showSearchDialog(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: StudyBuddyColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 24,
+          right: 24,
+          top: 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              autofocus: true,
+              style: const TextStyle(color: StudyBuddyColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Search study sets, notes, topics...',
+                hintStyle: TextStyle(color: StudyBuddyColors.textTertiary),
+                prefixIcon: const Icon(
+                  Icons.search_rounded,
+                  color: StudyBuddyColors.textSecondary,
+                ),
+                filled: true,
+                fillColor: StudyBuddyColors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onSubmitted: (query) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Searching for "$query"...')),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryCard(BuildContext context, String category) {
     return InkWell(
       onTap: () {
-        // TODO: Navigate to category
+        Navigator.pushNamed(
+          context,
+          AppRoutes.library,
+          arguments: {'category': category},
+        );
       },
       borderRadius: StudyBuddyDecorations.borderRadiusL,
       child: Container(
@@ -167,7 +215,7 @@ class ExploreScreen extends StatelessWidget {
   }
 
   Widget _buildPopularSets() {
-    // TODO: Replace with real data
+    // Demo data - in production, fetch from repository
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -226,4 +274,3 @@ class ExploreScreen extends StatelessWidget {
     );
   }
 }
-

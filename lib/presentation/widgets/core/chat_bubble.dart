@@ -27,13 +27,12 @@ class ChatBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!isUser) ...[
-            const SizedBox(width: 8),
-          ],
+          if (!isUser) ...[const SizedBox(width: 8)],
           Flexible(
             child: Container(
               padding: const EdgeInsets.all(12),
@@ -55,11 +54,7 @@ class ChatBubble extends StatelessWidget {
                   ),
                   if (quickActions != null && quickActions!.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: quickActions!,
-                    ),
+                    Wrap(spacing: 8, runSpacing: 8, children: quickActions!),
                   ],
                   if (timestamp != null) ...[
                     const SizedBox(height: 4),
@@ -68,7 +63,7 @@ class ChatBubble extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         color: isUser
-                            ? Colors.white.withOpacity(0.7)
+                            ? Colors.white.withValues(alpha: 0.7)
                             : StudyBuddyColors.textTertiary,
                       ),
                     ),
@@ -77,9 +72,7 @@ class ChatBubble extends StatelessWidget {
               ),
             ),
           ),
-          if (isUser) ...[
-            const SizedBox(width: 8),
-          ],
+          if (isUser) ...[const SizedBox(width: 8)],
         ],
       ),
     );
@@ -138,7 +131,8 @@ class _TypingIndicatorState extends State<TypingIndicator>
                   builder: (context, child) {
                     final delay = index * 0.2;
                     final animationValue = (_controller.value + delay) % 1.0;
-                    final opacity = (math.sin(animationValue * math.pi * 2) + 1) / 2;
+                    final opacity =
+                        (math.sin(animationValue * math.pi * 2) + 1) / 2;
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 3),
                       child: Opacity(
@@ -163,4 +157,3 @@ class _TypingIndicatorState extends State<TypingIndicator>
     );
   }
 }
-

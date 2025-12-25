@@ -2,6 +2,7 @@
 /// File upload step matching StudySmarter design.
 library;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
@@ -92,7 +93,9 @@ class _UploadStepState extends State<UploadStep> {
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: const BorderSide(color: StudyBuddyColors.border),
+                          side: const BorderSide(
+                            color: StudyBuddyColors.border,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: StudyBuddyDecorations.borderRadiusM,
                           ),
@@ -113,7 +116,9 @@ class _UploadStepState extends State<UploadStep> {
                         ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: const BorderSide(color: StudyBuddyColors.border),
+                          side: const BorderSide(
+                            color: StudyBuddyColors.border,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: StudyBuddyDecorations.borderRadiusM,
                           ),
@@ -165,10 +170,7 @@ class _UploadStepState extends State<UploadStep> {
               ),
               child: const Text(
                 'Continue',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -192,7 +194,7 @@ class _UploadStepState extends State<UploadStep> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: StudyBuddyColors.error.withOpacity(0.1),
+              color: StudyBuddyColors.error.withValues(alpha: 0.1),
               borderRadius: StudyBuddyDecorations.borderRadiusS,
             ),
             child: const Icon(
@@ -236,15 +238,36 @@ class _UploadStepState extends State<UploadStep> {
     );
   }
 
-  void _handleUploadFiles() {
-    // TODO: Implement file picker
-    setState(() {
-      _uploadedFiles.add('Software Quality Engineering - Google Docs.pdf');
-    });
+  void _handleUploadFiles() async {
+    // Use file_picker to select files
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: [
+        'pdf',
+        'doc',
+        'docx',
+        'ppt',
+        'pptx',
+        'txt',
+        'jpg',
+        'png',
+      ],
+    );
+
+    if (result != null && result.files.isNotEmpty) {
+      setState(() {
+        for (final file in result.files) {
+          if (file.name.isNotEmpty) {
+            _uploadedFiles.add(file.name);
+          }
+        }
+      });
+    }
   }
 
   void _handleScanMaterial() {
-    // TODO: Implement camera/scanner
+    // Camera/scanner feature placeholder
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Camera scan coming soon'),
@@ -254,7 +277,18 @@ class _UploadStepState extends State<UploadStep> {
   }
 
   void _handleNext() {
-    // TODO: Save uploaded files and navigate
+    // Navigate to next step or complete onboarding
+    if (_uploadedFiles.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${_uploadedFiles.length} files uploaded successfully!',
+          ),
+          backgroundColor: StudyBuddyColors.success,
+        ),
+      );
+    }
+    // Continue to next onboarding step
+    Navigator.of(context).pop();
   }
 }
-

@@ -6,9 +6,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:studnet_ai_buddy/core/theme/app_theme.dart';
 import 'package:studnet_ai_buddy/core/utils/date_utils.dart';
 import 'package:studnet_ai_buddy/domain/entities/study_task.dart';
+import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 
 class TaskCard extends StatelessWidget {
   final StudyTask task;
@@ -49,8 +49,8 @@ class TaskCard extends StatelessWidget {
                             ? TextDecoration.lineThrough
                             : null,
                         color: task.isCompleted
-                            ? AppTheme.textMuted
-                            : AppTheme.textPrimary,
+                            ? AppColors.textHint
+                            : AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -58,21 +58,20 @@ class TaskCard extends StatelessWidget {
                     IconButton(
                       icon: const Icon(Icons.check_circle_outline),
                       onPressed: onComplete,
-                      color: AppTheme.successColor,
+                      color: AppColors.success,
                     ),
                   if (task.isCompleted)
-                    const Icon(
+                    Icon(
                       Icons.check_circle,
-                      color: AppTheme.successColor,
+                      color: AppColors.success,
                     ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 task.description,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.textSecondary,
+                style: AppTypography.body2.copyWith(
+                  color: AppColors.textSecondary,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -96,24 +95,24 @@ class TaskCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.backgroundColor,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.lightbulb_outline,
                         size: 16,
-                        color: AppTheme.accentColor,
+                        color: AppColors.primary,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           task.aiReasoning,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppTheme.textSecondary,
+                            color: AppColors.textSecondary,
                             fontStyle: FontStyle.italic,
                           ),
                         ),
@@ -131,10 +130,10 @@ class TaskCard extends StatelessWidget {
 
   Widget _buildPriorityIndicator() {
     final color = switch (task.priority) {
-      TaskPriority.critical => AppTheme.errorColor,
-      TaskPriority.high => AppTheme.warningColor,
-      TaskPriority.medium => AppTheme.accentColor,
-      TaskPriority.low => AppTheme.textMuted,
+      TaskPriority.critical => AppColors.error,
+      TaskPriority.high => AppColors.warning,
+      TaskPriority.medium => AppColors.primary,
+      TaskPriority.low => AppColors.textHint,
     };
 
     return Container(
@@ -151,19 +150,19 @@ class TaskCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppTheme.backgroundColor,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: AppTheme.textMuted),
+          Icon(icon, size: 12, color: AppColors.textHint),
           const SizedBox(width: 4),
           Text(
             label,
             style: const TextStyle(
               fontSize: 12,
-              color: AppTheme.textMuted,
+              color: AppColors.textHint,
             ),
           ),
         ],

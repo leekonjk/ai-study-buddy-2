@@ -137,6 +137,15 @@ class FocusSessionState {
 
   /// Elapsed minutes (rounded down).
   int get elapsedMinutes => elapsedSeconds ~/ 60;
+
+  /// Alias for formattedRemaining - used by UI.
+  String get formattedRemainingTime => formattedRemaining;
+
+  /// Alias for progress - used by UI.
+  double get sessionProgress => progress;
+
+  /// Alias for activeSession - used by UI.
+  FocusSession? get currentSession => activeSession;
 }
 
 /// ViewModel for focus session screen.

@@ -1,1 +1,29 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"studnet-ai-buddy","appId":"1:679903159402:android:ffa7e1b6488db7692a9613","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"studnet-ai-buddy","configurations":{"android":"1:679903159402:android:ffa7e1b6488db7692a9613","ios":"1:679903159402:ios:9f8007d31280de3e2a9613","macos":"1:679903159402:ios:9f8007d31280de3e2a9613","web":"1:679903159402:web:29aac7b912bdfd542a9613","windows":"1:679903159402:web:0ae3238037e1b7322a9613"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "studnet-ai-buddy",
+          "appId": "1:679903159402:android:ffa7e1b6488db7692a9613",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "studnet-ai-buddy",
+          "configurations": {
+            "android": "1:679903159402:android:ffa7e1b6488db7692a9613",
+            "ios": "1:679903159402:ios:9f8007d31280de3e2a9613",
+            "macos": "1:679903159402:ios:9f8007d31280de3e2a9613",
+            "web": "1:679903159402:web:29aac7b912bdfd542a9613",
+            "windows": "1:679903159402:web:0ae3238037e1b7322a9613"
+          }
+        }
+      }
+    }
+  }
+}

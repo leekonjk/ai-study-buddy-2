@@ -237,6 +237,100 @@ class AIMentorServiceImpl implements AIMentorService {
       generatedAt: now,
     );
   }
+
+  @override
+  Future<String> answerQuery(String query) async {
+    // TODO: Integrate with real AI API (OpenAI, Anthropic, etc.)
+    // For now, return intelligent mock responses
+    final lowerQuery = query.toLowerCase();
+
+    if (lowerQuery.contains('flashcard')) {
+      if (lowerQuery.contains('file')) {
+        return "I don't see a file uploaded yet. Could you please upload the file you'd like to create flashcards from?";
+      }
+      if (lowerQuery.contains('without')) {
+        return "Great! To create flashcards for your exam, could you tell me which topics or areas you'd like to focus on? Also, let me know the difficulty level (easy, medium, hard) and how many flashcards you'd prefer.";
+      }
+      return "I can help you create flashcards! Would you like to create them from a file you upload, or specify topics directly?";
+    }
+
+    if (lowerQuery.contains('specify') || lowerQuery.contains('topic')) {
+      return "Please specify the topics you'd like the flashcards to cover, and your preferred difficulty level (easy, medium, or hard). Also, let me know approximately how many flashcards you want.";
+    }
+
+    if (lowerQuery.contains('create') && lowerQuery.contains('new')) {
+      return "Thanks for the details! I'll prepare the flashcards for you. Would you like me to add these flashcards to your existing study set or create a new one?";
+    }
+
+    if (lowerQuery.contains('help') || lowerQuery.contains('how')) {
+      return "I'd be happy to help! I can assist you with:\n"
+          "• Creating flashcards from topics or files\n"
+          "• Generating study plans\n"
+          "• Answering questions about your subjects\n"
+          "• Providing study tips and recommendations\n\n"
+          "What would you like to work on?";
+    }
+
+    return "I understand. Let me help you with that. Could you provide more details about what you need?";
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> generateFlashcardsFromTopics({
+    required String topics,
+    required String difficulty,
+    required int count,
+  }) async {
+    // TODO: Integrate with real AI API to generate flashcards
+    // For now, return mock flashcards
+    final flashcards = <Map<String, dynamic>>[];
+
+    for (int i = 0; i < count; i++) {
+      flashcards.add({
+        'id': 'flashcard_${DateTime.now().millisecondsSinceEpoch}_$i',
+        'front': 'Question ${i + 1} about $topics',
+        'back': 'Answer ${i + 1} explaining the concept',
+        'difficulty': difficulty,
+        'topic': topics,
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+    }
+
+    return flashcards;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> generateFlashcardsFromFile({
+    required String fileId,
+    required String difficulty,
+    required int count,
+  }) async {
+    // TODO: Extract text from file, then generate flashcards using AI
+    // For now, return mock flashcards
+    final flashcards = <Map<String, dynamic>>[];
+
+    for (int i = 0; i < count; i++) {
+      flashcards.add({
+        'id': 'flashcard_file_${fileId}_${DateTime.now().millisecondsSinceEpoch}_$i',
+        'front': 'Question ${i + 1} from file',
+        'back': 'Answer ${i + 1} extracted from file content',
+        'difficulty': difficulty,
+        'fileId': fileId,
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+    }
+
+    return flashcards;
+  }
+
+  @override
+  Future<String> createStudySet({
+    required String name,
+    required String category,
+  }) async {
+    // TODO: Integrate with repository to create study set
+    // For now, return mock ID
+    return 'studyset_${DateTime.now().millisecondsSinceEpoch}';
+  }
 }
 
 extension on DateTime {

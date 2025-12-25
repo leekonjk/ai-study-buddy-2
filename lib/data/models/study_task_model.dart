@@ -10,52 +10,55 @@ import 'package:studnet_ai_buddy/domain/entities/study_task.dart';
 class StudyTaskModel extends StudyTask {
   const StudyTaskModel({
     required super.id,
-    required super.subjectId,
-    super.topicId,
     required super.title,
-    required super.description,
-    required super.estimatedMinutes,
-    required super.priority,
-    required super.type,
-    required super.scheduledDate,
-    super.completedAt,
-    required super.aiReasoning,
+    required super.subjectId,
+    required super.date,
+    super.estimatedMinutes = 60,
+    super.isCompleted = false,
+    super.priority = TaskPriority.medium,
+    super.type = TaskType.study,
+    super.description = '',
+    super.aiReasoning = '',
   });
 
   factory StudyTaskModel.fromJson(Map<String, dynamic> json) {
     return StudyTaskModel(
       id: json['id'] as String,
-      subjectId: json['subjectId'] as String,
-      topicId: json['topicId'] as String?,
       title: json['title'] as String,
-      description: json['description'] as String,
-      estimatedMinutes: json['estimatedMinutes'] as int,
+      subjectId: json['subjectId'] as String,
+      date: json['scheduledDate'] != null
+          ? DateTime.parse(json['scheduledDate'] as String)
+          : DateTime.parse(json['date'] as String),
+      estimatedMinutes: json['estimatedMinutes'] as int? ?? 60,
+      isCompleted: json['isCompleted'] as bool? ?? 
+          (json['completedAt'] != null ? true : false),
       priority: TaskPriority.values.firstWhere(
         (e) => e.name == json['priority'],
+        orElse: () => TaskPriority.medium,
       ),
       type: TaskType.values.firstWhere(
         (e) => e.name == json['type'],
+        orElse: () => TaskType.study,
       ),
-      scheduledDate: DateTime.parse(json['scheduledDate'] as String),
-      completedAt: json['completedAt'] != null
-          ? DateTime.parse(json['completedAt'] as String)
-          : null,
-      aiReasoning: json['aiReasoning'] as String,
+      description: json['description'] as String? ?? '',
+      aiReasoning: json['aiReasoning'] as String? ?? '',
     );
   }
 
+  @override
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'subjectId': subjectId,
-      'topicId': topicId,
       'title': title,
-      'description': description,
+      'subjectId': subjectId,
+      'date': date.toIso8601String(),
+      'scheduledDate': scheduledDate.toIso8601String(), // Keep for backward compatibility
       'estimatedMinutes': estimatedMinutes,
+      'isCompleted': isCompleted,
+      'completedAt': isCompleted ? date.toIso8601String() : null, // For backward compatibility
       'priority': priority.name,
       'type': type.name,
-      'scheduledDate': scheduledDate.toIso8601String(),
-      'completedAt': completedAt?.toIso8601String(),
+      'description': description,
       'aiReasoning': aiReasoning,
     };
   }
@@ -63,15 +66,14 @@ class StudyTaskModel extends StudyTask {
   factory StudyTaskModel.fromEntity(StudyTask entity) {
     return StudyTaskModel(
       id: entity.id,
-      subjectId: entity.subjectId,
-      topicId: entity.topicId,
       title: entity.title,
-      description: entity.description,
+      subjectId: entity.subjectId,
+      date: entity.date,
       estimatedMinutes: entity.estimatedMinutes,
+      isCompleted: entity.isCompleted,
       priority: entity.priority,
       type: entity.type,
-      scheduledDate: entity.scheduledDate,
-      completedAt: entity.completedAt,
+      description: entity.description,
       aiReasoning: entity.aiReasoning,
     );
   }

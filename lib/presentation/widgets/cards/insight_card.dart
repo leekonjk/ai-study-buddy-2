@@ -6,8 +6,10 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:studnet_ai_buddy/core/theme/app_theme.dart';
+
 import 'package:studnet_ai_buddy/domain/entities/ai_insight.dart';
+import 'package:studnet_ai_buddy/presentation/theme/app_icons.dart';
+import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 
 class InsightCard extends StatelessWidget {
   final AIInsight insight;
@@ -39,12 +41,11 @@ class InsightCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       insight.title,
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: AppTypography.subtitle1.copyWith(
                         fontWeight: FontWeight.w600,
                         color: insight.isRead
-                            ? AppTheme.textSecondary
-                            : AppTheme.textPrimary,
+                            ? AppColors.textSecondary
+                            : AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -52,8 +53,8 @@ class InsightCard extends StatelessWidget {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.accentColor,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -62,33 +63,32 @@ class InsightCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 insight.message,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.textSecondary,
+                style: AppTypography.body1.copyWith(
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppTheme.backgroundColor,
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.psychology_outlined,
+                    Icon(
+                      AppIcons.brain,
                       size: 16,
-                      color: AppTheme.accentColor,
+                      color: AppColors.secondary,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
                         insight.reasoning,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textMuted,
+                        style: AppTypography.caption.copyWith(
+                          color: AppColors.textHint,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -115,18 +115,18 @@ class InsightCard extends StatelessWidget {
 
   Widget _buildTypeIcon() {
     final (icon, color) = switch (insight.type) {
-      InsightType.encouragement => (Icons.celebration, AppTheme.successColor),
-      InsightType.warning => (Icons.warning_amber, AppTheme.warningColor),
-      InsightType.suggestion => (Icons.lightbulb_outline, AppTheme.accentColor),
-      InsightType.milestone => (Icons.emoji_events, AppTheme.successColor),
-      InsightType.reminder => (Icons.notifications_outlined, AppTheme.textSecondary),
+      InsightType.encouragement => (AppIcons.checkAll, AppColors.success),
+      InsightType.warning => (AppIcons.alertCircle, AppColors.warning),
+      InsightType.suggestion => (AppIcons.lightbulb, AppColors.primary),
+      InsightType.milestone => (AppIcons.trendingUp, AppColors.success),
+      InsightType.reminder => (AppIcons.bell, AppColors.textSecondary),
     };
 
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Icon(icon, size: 20, color: color),
     );

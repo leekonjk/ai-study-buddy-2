@@ -9,6 +9,7 @@
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:studnet_ai_buddy/core/errors/failures.dart';
 import 'package:studnet_ai_buddy/core/utils/result.dart';
 import 'package:studnet_ai_buddy/domain/entities/focus_session.dart';
@@ -16,16 +17,18 @@ import 'package:studnet_ai_buddy/domain/repositories/focus_session_repository.da
 
 class FocusSessionRepositoryImpl implements FocusSessionRepository {
   final FirebaseFirestore _firestore;
-  final String _currentStudentId;
+  final FirebaseAuth _auth;
 
   // Firestore collection name (per schema)
   static const String _focusSessionsCollection = 'focus_sessions';
 
   FocusSessionRepositoryImpl({
     required FirebaseFirestore firestore,
-    required String currentStudentId,
+    required FirebaseAuth auth,
   })  : _firestore = firestore,
-        _currentStudentId = currentStudentId;
+        _auth = auth;
+
+  String get _currentStudentId => _auth.currentUser?.uid ?? '';
 
   // ─────────────────────────────────────────────────────────────────────────
   // Session Retrieval Operations

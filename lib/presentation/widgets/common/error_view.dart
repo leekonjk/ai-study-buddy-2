@@ -6,7 +6,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:studnet_ai_buddy/core/theme/app_theme.dart';
+
+import 'package:studnet_ai_buddy/presentation/theme/app_icons.dart';
+import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 
 class ErrorView extends StatelessWidget {
   final String message;
@@ -26,25 +28,28 @@ class ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
-              Icons.error_outline,
+            Icon(
+              AppIcons.alertCircle,
               size: 48,
-              color: AppTheme.errorColor,
+              color: AppColors.error,
             ),
             const SizedBox(height: 16),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppTheme.textSecondary,
-                fontSize: 16,
+              style: AppTypography.body1.copyWith(
+                color: AppColors.textSecondary,
               ),
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: onRetry,
-                child: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.textOnPrimary,
+                ),
+                child: Text('Retry', style: AppTypography.button),
               ),
             ],
           ],

@@ -342,13 +342,12 @@ class StudyPlannerServiceImpl implements StudyPlannerService {
       final task = StudyTask(
         id: 'task_${weekStart.millisecondsSinceEpoch}_$taskId',
         subjectId: subject.id,
-        topicId: null,
         title: _generateTaskTitle(subject, taskType),
         description: _generateTaskDescription(taskType, subject),
         estimatedMinutes: duration,
         priority: priority,
         type: taskType,
-        scheduledDate: weekStart, // Will be redistributed later
+        date: weekStart, // Will be redistributed later
         aiReasoning: reasoning,
       );
 
@@ -387,11 +386,14 @@ class StudyPlannerServiceImpl implements StudyPlannerService {
   /// Determines task duration based on type and mastery.
   int _getTaskDuration(TaskType type, double mastery) {
     return switch (type) {
+      TaskType.study => mastery < 0.4 ? _longSessionMinutes : _mediumSessionMinutes,
       TaskType.learn => mastery < 0.4 ? _longSessionMinutes : _mediumSessionMinutes,
       TaskType.review => _shortSessionMinutes,
       TaskType.practice => _mediumSessionMinutes,
       TaskType.quiz => _shortSessionMinutes,
       TaskType.revise => _mediumSessionMinutes,
+      TaskType.revision => _mediumSessionMinutes,
+      TaskType.assignment => _longSessionMinutes,
     };
   }
 
@@ -419,11 +421,14 @@ class StudyPlannerServiceImpl implements StudyPlannerService {
   /// Generates human-readable task title.
   String _generateTaskTitle(Subject subject, TaskType type) {
     final action = switch (type) {
+      TaskType.study => 'Study',
       TaskType.learn => 'Learn',
       TaskType.review => 'Review',
       TaskType.practice => 'Practice',
       TaskType.quiz => 'Quiz',
       TaskType.revise => 'Revise',
+      TaskType.revision => 'Revision',
+      TaskType.assignment => 'Assignment',
     };
     return '$action: ${subject.name}';
   }
@@ -431,11 +436,14 @@ class StudyPlannerServiceImpl implements StudyPlannerService {
   /// Generates task description.
   String _generateTaskDescription(TaskType type, Subject subject) {
     return switch (type) {
+      TaskType.study => 'Study new concepts in ${subject.name}. Focus on understanding core principles.',
       TaskType.learn => 'Study new concepts in ${subject.name}. Focus on understanding core principles.',
       TaskType.review => 'Review previously covered material in ${subject.name} to reinforce memory.',
       TaskType.practice => 'Complete practice problems for ${subject.name} to build proficiency.',
       TaskType.quiz => 'Take an adaptive quiz to assess current understanding of ${subject.name}.',
       TaskType.revise => 'Intensive revision of ${subject.name} key topics and formulas.',
+      TaskType.revision => 'Intensive revision of ${subject.name} key topics and formulas.',
+      TaskType.assignment => 'Complete assignment for ${subject.name}.',
     };
   }
 
@@ -460,6 +468,9 @@ class StudyPlannerServiceImpl implements StudyPlannerService {
 
     // Task type justification
     switch (taskType) {
+      case TaskType.study:
+        buffer.write('Study session recommended to build foundational knowledge. ');
+        break;
       case TaskType.learn:
         buffer.write('New learning recommended to build foundational knowledge. ');
         break;
@@ -474,6 +485,12 @@ class StudyPlannerServiceImpl implements StudyPlannerService {
         break;
       case TaskType.revise:
         buffer.write('Intensive revision to consolidate learning before assessment. ');
+        break;
+      case TaskType.revision:
+        buffer.write('Intensive revision to consolidate learning before assessment. ');
+        break;
+      case TaskType.assignment:
+        buffer.write('Assignment work to complete course requirements. ');
         break;
     }
 
@@ -520,7 +537,7 @@ class StudyPlannerServiceImpl implements StudyPlannerService {
 
       // Assign task to best day
       final scheduledDate = weekStart.add(Duration(days: bestDay));
-      final scheduledTask = task.copyWith(scheduledDate: scheduledDate);
+      final scheduledTask = task.copyWith(date: scheduledDate);
       distributedTasks.add(scheduledTask);
       minutesPerDay[bestDay] += task.estimatedMinutes;
     }

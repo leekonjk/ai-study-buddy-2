@@ -37,4 +37,27 @@ abstract class AIMentorService {
     required KnowledgeLevel level,
     required List<RiskAssessment> assessments,
   });
+
+  /// Answers a general query from the user in chat.
+  Future<String> answerQuery(String query);
+
+  /// Generates flashcards from topics.
+  Future<List<Map<String, dynamic>>> generateFlashcardsFromTopics({
+    required String topics,
+    required String difficulty, // 'easy', 'medium', 'hard'
+    required int count,
+  });
+
+  /// Generates flashcards from uploaded file.
+  Future<List<Map<String, dynamic>>> generateFlashcardsFromFile({
+    required String fileId,
+    required String difficulty,
+    required int count,
+  });
+
+  /// Creates a new study set.
+  Future<String> createStudySet({
+    required String name,
+    required String category,
+  });
 }

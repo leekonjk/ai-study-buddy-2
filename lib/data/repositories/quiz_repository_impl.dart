@@ -10,6 +10,7 @@
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:studnet_ai_buddy/core/errors/failures.dart';
 import 'package:studnet_ai_buddy/core/utils/result.dart';
 import 'package:studnet_ai_buddy/domain/entities/quiz.dart';
@@ -17,7 +18,7 @@ import 'package:studnet_ai_buddy/domain/repositories/quiz_repository.dart';
 
 class QuizRepositoryImpl implements QuizRepository {
   final FirebaseFirestore _firestore;
-  final String _currentStudentId;
+  final FirebaseAuth _auth;
 
   // Firestore collection names (per schema)
   static const String _quizzesCollection = 'quizzes';
@@ -25,9 +26,11 @@ class QuizRepositoryImpl implements QuizRepository {
 
   QuizRepositoryImpl({
     required FirebaseFirestore firestore,
-    required String currentStudentId,
+    required FirebaseAuth auth,
   })  : _firestore = firestore,
-        _currentStudentId = currentStudentId;
+        _auth = auth;
+
+  String get _currentStudentId => _auth.currentUser?.uid ?? '';
 
   // ─────────────────────────────────────────────────────────────────────────
   // Quiz Retrieval Operations
@@ -66,16 +69,23 @@ class QuizRepositoryImpl implements QuizRepository {
     required String subjectId,
     required double targetDifficulty,
     required int count,
+    String? topic,
   }) async {
     try {
       // Map target difficulty to schema difficulty string
       final difficultyString = _mapDifficultyToString(targetDifficulty);
 
       // Query quizzes for the subject with matching difficulty
-      final querySnapshot = await _firestore
+      var query = _firestore
           .collection(_quizzesCollection)
           .where('subjectId', isEqualTo: subjectId)
-          .where('difficulty', isEqualTo: difficultyString)
+          .where('difficulty', isEqualTo: difficultyString);
+
+      if (topic != null && topic != 'All Topics') {
+        query = query.where('topic', isEqualTo: topic);
+      }
+
+      final querySnapshot = await query
           .limit(3) // Get multiple quizzes to have enough questions
           .get();
 

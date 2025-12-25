@@ -16,6 +16,11 @@ class Quiz {
   final DateTime? startedAt;
   final DateTime? completedAt;
   final QuizResult? result;
+  final int? timeLimitMinutes; // From template
+  final double? passingScore; // From template (0.0 to 1.0)
+  final String? templateName; // From template
+  final String? description; // From template
+  final String? difficulty; // beginner/intermediate/advanced from template
 
   const Quiz({
     required this.id,
@@ -26,6 +31,11 @@ class Quiz {
     this.startedAt,
     this.completedAt,
     this.result,
+    this.timeLimitMinutes,
+    this.passingScore,
+    this.templateName,
+    this.description,
+    this.difficulty,
   });
 
   bool get isCompleted => completedAt != null;
@@ -36,6 +46,7 @@ enum QuizType {
   diagnostic, // Initial knowledge assessment
   adaptive, // AI-triggered based on gaps
   review, // Periodic review quiz
+  practice, // Practice quiz from template
 }
 
 class QuizQuestion {

@@ -1,21 +1,29 @@
-/// Quiz Screen.
-/// Displays diagnostic and adaptive quiz interface.
-/// 
-/// Layer: Presentation (UI)
-/// Responsibility: Quiz flow, question display, answer selection.
-/// Binds to: QuizViewModel
+/// Quiz Screen - Minimal Design.
+/// Clean, minimal quiz interface.
 library;
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/entities/quiz.dart';
+import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/quiz/quiz_viewmodel.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/lottie_loading.dart';
 
 class QuizScreen extends StatelessWidget {
   final String? subjectId;
+  final String? topic;
+  final int? questionCount;
+  final double? difficulty;
 
-  const QuizScreen({super.key, this.subjectId});
+  const QuizScreen({
+    super.key,
+    this.subjectId,
+    this.topic,
+    this.questionCount,
+    this.difficulty,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +31,16 @@ class QuizScreen extends StatelessWidget {
       create: (_) {
         final vm = getIt<QuizViewModel>();
         if (subjectId != null) {
-          vm.loadDiagnosticQuiz(subjectId!);
+          if (topic != null || difficulty != null) {
+            vm.loadCustomQuiz(
+              subjectId: subjectId!,
+              topic: topic,
+              difficulty: difficulty ?? 0.5,
+              count: questionCount ?? 10,
+            );
+          } else {
+            vm.loadDiagnosticQuiz(subjectId!);
+          }
         }
         return vm;
       },
@@ -40,23 +57,61 @@ class _QuizContent extends StatelessWidget {
     final state = context.watch<QuizViewModel>().state;
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(state.quiz?.subjectId ?? 'Quiz'),
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              state.quiz?.templateName ?? 'Quiz',
+              style: AppTypography.headline3,
+            ),
+            if (state.quiz?.difficulty != null)
+              Text(
+                state.quiz!.difficulty!.toUpperCase(),
+                style: AppTypography.caption.copyWith(
+                  color: _getDifficultyColor(state.quiz!.difficulty!),
+                ),
+              ),
+          ],
+        ),
         leading: IconButton(
           icon: const Icon(Icons.close),
+          color: AppColors.textPrimary,
           onPressed: () => _showExitDialog(context),
         ),
         actions: [
-          if (!state.isCompleted)
+          if (!state.isCompleted && state.quiz?.timeLimitMinutes != null)
             Center(
               child: Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Text(
-                  '${state.answeredCount}/${state.totalQuestions}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                padding: const EdgeInsets.only(right: AppSpacing.md),
+                child: _Timer(
+                  timeLimitMinutes: state.quiz!.timeLimitMinutes!,
+                  startedAt: state.quiz!.startedAt ?? DateTime.now(),
                 ),
               ),
             ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.md),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Text(
+                  '${state.answeredCount}/${state.totalQuestions}',
+                  style: AppTypography.caption.copyWith(
+                    color: AppColors.textInverse,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
       body: _buildBody(context, state),
@@ -65,18 +120,18 @@ class _QuizContent extends StatelessWidget {
 
   Widget _buildBody(BuildContext context, QuizState state) {
     if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LottieLoading(size: 100);
     }
 
     if (state.hasError) {
       return _ErrorView(
         message: state.errorMessage!,
-        onRetry: () => context.read<QuizViewModel>().dismissError(),
+        onRetry: () => Navigator.of(context).pop(),
       );
     }
 
     if (state.isCompleted && state.result != null) {
-      return _ResultView(result: state.result!);
+      return _ResultView(result: state.result!, quiz: state.quiz);
     }
 
     if (state.quiz == null) {
@@ -91,7 +146,7 @@ class _QuizContent extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Exit Quiz?'),
-        content: const Text('Your progress will be lost if you exit now.'),
+        content: const Text('Your progress will be lost.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -108,74 +163,22 @@ class _QuizContent extends StatelessWidget {
       ),
     );
   }
-}
 
-class _ErrorView extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-
-  const _ErrorView({required this.message, required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Go Back'),
-            ),
-          ],
-        ),
-      ),
-    );
+  Color _getDifficultyColor(String difficulty) {
+    switch (difficulty.toLowerCase()) {
+      case 'beginner':
+        return AppColors.success;
+      case 'intermediate':
+        return AppColors.warning;
+      case 'advanced':
+        return AppColors.error;
+      default:
+        return AppColors.textSecondary;
+    }
   }
 }
 
-class _NoQuizView extends StatelessWidget {
-  const _NoQuizView();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.quiz_outlined, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'No quiz available',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Please select a subject to start a quiz',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Go Back'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
+/// Minimal quiz view.
 class _QuizView extends StatelessWidget {
   final QuizState state;
 
@@ -186,31 +189,27 @@ class _QuizView extends StatelessWidget {
     return Column(
       children: [
         // Progress bar
-        _ProgressBar(progress: state.progress),
+        LinearProgressIndicator(
+          value: state.progress,
+          backgroundColor: AppColors.border,
+          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+          minHeight: 3,
+        ),
 
         // Question content
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Question number
                 Text(
                   'Question ${state.currentQuestionIndex + 1} of ${state.totalQuestions}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[600],
-                      ),
+                  style: AppTypography.body2,
                 ),
-                const SizedBox(height: 16),
-
-                // Question text
-                if (state.currentQuestion != null)
-                  _QuestionCard(question: state.currentQuestion!),
-
-                const SizedBox(height: 24),
-
-                // Answer options
+                const SizedBox(height: AppSpacing.md),
+                if (state.currentQuestion != null) _QuestionCard(question: state.currentQuestion!),
+                const SizedBox(height: AppSpacing.lg),
                 if (state.currentQuestion != null)
                   _AnswerOptions(
                     question: state.currentQuestion!,
@@ -222,32 +221,57 @@ class _QuizView extends StatelessWidget {
         ),
 
         // Navigation buttons
-        _NavigationButtons(
-          isFirstQuestion: state.isFirstQuestion,
-          isLastQuestion: state.isLastQuestion,
-          canSubmit: state.canSubmit,
-          isSubmitting: state.isSubmitting,
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+          ),
+          child: Row(
+            children: [
+              if (!state.isFirstQuestion)
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => context.read<QuizViewModel>().previousQuestion(),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    ),
+                    child: const Text('Previous'),
+                  ),
+                ),
+              if (!state.isFirstQuestion) const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: state.isSubmitting
+                      ? null
+                      : () {
+                          if (state.isLastQuestion) {
+                            if (state.canSubmit) {
+                              context.read<QuizViewModel>().submitQuiz();
+                            }
+                          } else {
+                            context.read<QuizViewModel>().nextQuestion();
+                          }
+                        },
+                  child: state.isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(state.isLastQuestion ? 'Submit' : 'Next'),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 }
 
-class _ProgressBar extends StatelessWidget {
-  final double progress;
-
-  const _ProgressBar({required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    return LinearProgressIndicator(
-      value: progress,
-      backgroundColor: Colors.grey[200],
-      minHeight: 4,
-    );
-  }
-}
-
+/// Minimal question card.
 class _QuestionCard extends StatelessWidget {
   final QuizQuestion question;
 
@@ -256,60 +280,21 @@ class _QuestionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getDifficultyColor(question.difficulty),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _getDifficultyLabel(question.difficulty),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            question.questionText,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  height: 1.4,
-                ),
-          ),
-        ],
+      child: Text(
+        question.questionText,
+        style: AppTypography.subtitle1,
       ),
     );
   }
-
-  Color _getDifficultyColor(double difficulty) {
-    if (difficulty < 0.4) return Colors.green;
-    if (difficulty < 0.7) return Colors.orange;
-    return Colors.red;
-  }
-
-  String _getDifficultyLabel(double difficulty) {
-    if (difficulty < 0.4) return 'Easy';
-    if (difficulty < 0.7) return 'Medium';
-    return 'Hard';
-  }
 }
 
+/// Minimal answer options.
 class _AnswerOptions extends StatelessWidget {
   final QuizQuestion question;
   final int? selectedIndex;
@@ -323,16 +308,56 @@ class _AnswerOptions extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: List.generate(question.options.length, (index) {
-        final option = question.options[index];
         final isSelected = selectedIndex == index;
-
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _OptionCard(
-            label: String.fromCharCode(65 + index), // A, B, C, D
-            text: option,
-            isSelected: isSelected,
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: InkWell(
             onTap: () => context.read<QuizViewModel>().selectCurrentAnswer(index),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : AppColors.cardBackground,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.border,
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.primary : AppColors.border,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        String.fromCharCode(65 + index),
+                        style: AppTypography.subtitle2.copyWith(
+                          color: isSelected ? AppColors.textInverse : AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      question.options[index],
+                      style: AppTypography.body1.copyWith(
+                        color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       }),
@@ -340,74 +365,203 @@ class _AnswerOptions extends StatelessWidget {
   }
 }
 
-class _OptionCard extends StatelessWidget {
-  final String label;
-  final String text;
-  final bool isSelected;
-  final VoidCallback onTap;
+/// Minimal timer.
+class _Timer extends StatefulWidget {
+  final int timeLimitMinutes;
+  final DateTime startedAt;
 
-  const _OptionCard({
-    required this.label,
-    required this.text,
-    required this.isSelected,
-    required this.onTap,
+  const _Timer({
+    required this.timeLimitMinutes,
+    required this.startedAt,
   });
 
   @override
+  State<_Timer> createState() => _TimerState();
+}
+
+class _TimerState extends State<_Timer> {
+  Timer? _timer;
+  Duration _remaining = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _remaining = Duration(minutes: widget.timeLimitMinutes);
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() {
+          _remaining = Duration(minutes: widget.timeLimitMinutes) -
+              DateTime.now().difference(widget.startedAt);
+          if (_remaining.isNegative) {
+            _remaining = Duration.zero;
+            context.read<QuizViewModel>().submitQuiz();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).primaryColor.withOpacity(0.1)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? Theme.of(context).primaryColor
-                : Colors.grey[300]!,
-            width: isSelected ? 2 : 1,
-          ),
+    final minutes = _remaining.inMinutes;
+    final seconds = _remaining.inSeconds % 60;
+    final color = _remaining.inMinutes < 2
+        ? AppColors.error
+        : _remaining.inMinutes < 5
+            ? AppColors.warning
+            : AppColors.success;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Text(
+        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+        style: AppTypography.caption.copyWith(
+          color: AppColors.textInverse,
+          fontWeight: FontWeight.bold,
         ),
-        child: Row(
+      ),
+    );
+  }
+}
+
+/// Minimal result view.
+class _ResultView extends StatelessWidget {
+  final QuizResult result;
+  final Quiz? quiz;
+
+  const _ResultView({required this.result, this.quiz});
+
+  @override
+  Widget build(BuildContext context) {
+    final score = result.scorePercentage.toInt();
+    final color = score >= 80
+        ? AppColors.success
+        : score >= 60
+            ? AppColors.warning
+            : AppColors.error;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        children: [
+          const SizedBox(height: AppSpacing.xl),
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.1),
+              border: Border.all(color: color, width: 4),
+            ),
+            child: Center(
+              child: Text(
+                '$score%',
+                style: AppTypography.headline1.copyWith(color: color),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            _getTitle(score),
+            style: AppTypography.headline2,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '${result.correctAnswers} of ${result.totalQuestions} correct',
+            style: AppTypography.body2,
+          ),
+          if (quiz?.passingScore != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: score >= (quiz!.passingScore! * 100)
+                    ? AppColors.success.withValues(alpha: 0.1)
+                    : AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(
+                  color: score >= (quiz!.passingScore! * 100) ? AppColors.success : AppColors.error,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    score >= (quiz!.passingScore! * 100) ? Icons.check_circle : Icons.cancel,
+                    color: score >= (quiz!.passingScore! * 100) ? AppColors.success : AppColors.error,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    score >= (quiz!.passingScore! * 100) ? 'Passed' : 'Not Passed',
+                    style: AppTypography.body2.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: score >= (quiz!.passingScore! * 100) ? AppColors.success : AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.xl),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Done'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getTitle(int score) {
+    if (score >= 90) return 'Excellent!';
+    if (score >= 80) return 'Great Job!';
+    if (score >= 70) return 'Good Work!';
+    if (score >= 60) return 'Not Bad!';
+    return 'Keep Practicing!';
+  }
+}
+
+/// Error view.
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey[200],
+                color: AppColors.error.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Center(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.grey[700],
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              child: const Icon(Icons.error_outline, color: AppColors.error, size: 32),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: isSelected ? Theme.of(context).primaryColor : null,
-                  fontWeight: isSelected ? FontWeight.w600 : null,
-                ),
-              ),
-            ),
-            if (isSelected)
-              Icon(
-                Icons.check_circle,
-                color: Theme.of(context).primaryColor,
-              ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(message, style: AppTypography.body1, textAlign: TextAlign.center),
+            const SizedBox(height: AppSpacing.lg),
+            ElevatedButton(onPressed: onRetry, child: const Text('Go Back')),
           ],
         ),
       ),
@@ -415,251 +569,39 @@ class _OptionCard extends StatelessWidget {
   }
 }
 
-class _NavigationButtons extends StatelessWidget {
-  final bool isFirstQuestion;
-  final bool isLastQuestion;
-  final bool canSubmit;
-  final bool isSubmitting;
-
-  const _NavigationButtons({
-    required this.isFirstQuestion,
-    required this.isLastQuestion,
-    required this.canSubmit,
-    required this.isSubmitting,
-  });
+/// No quiz view.
+class _NoQuizView extends StatelessWidget {
+  const _NoQuizView();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          if (!isFirstQuestion)
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => context.read<QuizViewModel>().previousQuestion(),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Previous'),
-              ),
-            ),
-          if (!isFirstQuestion) const SizedBox(width: 16),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: isSubmitting
-                  ? null
-                  : () {
-                      if (isLastQuestion) {
-                        if (canSubmit) {
-                          context.read<QuizViewModel>().submitQuiz();
-                        } else {
-                          _showIncompleteDialog(context);
-                        }
-                      } else {
-                        context.read<QuizViewModel>().nextQuestion();
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: isSubmitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(isLastQuestion ? 'Submit' : 'Next'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showIncompleteDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Incomplete Quiz'),
-        content: const Text('Please answer all questions before submitting.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ResultView extends StatelessWidget {
-  final QuizResult result;
-
-  const _ResultView({required this.result});
-
-  @override
-  Widget build(BuildContext context) {
-    final scoreColor = _getScoreColor(result.scorePercentage);
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          const SizedBox(height: 32),
-
-          // Score circle
-          Container(
-            width: 160,
-            height: 160,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: scoreColor.withOpacity(0.1),
-              border: Border.all(color: scoreColor, width: 8),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '${result.scorePercentage.toInt()}%',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: scoreColor,
-                        ),
-                  ),
-                  Text(
-                    'Score',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // Result summary
-          Text(
-            _getResultTitle(result.scorePercentage),
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Text(
-            '${result.correctAnswers} out of ${result.totalQuestions} correct',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey[600],
-                ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // AI Feedback
-          if (result.aiFeedback.isNotEmpty)
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.blue[200]!),
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.psychology, color: Colors.blue[700]),
-                      const SizedBox(width: 8),
-                      Text(
-                        'AI Feedback',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    result.aiFeedback,
-                    style: TextStyle(color: Colors.blue[900]),
-                  ),
-                ],
-              ),
+              child: const Icon(Icons.quiz_outlined, color: AppColors.primary, size: 32),
             ),
-
-          const SizedBox(height: 32),
-
-          // Action buttons
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
+            const SizedBox(height: AppSpacing.lg),
+            Text('No quiz available', style: AppTypography.headline2),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Please select a subject', style: AppTypography.body2),
+            const SizedBox(height: AppSpacing.lg),
+            ElevatedButton(
               onPressed: () => Navigator.of(context).pop(),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Done'),
+              child: const Text('Go Back'),
             ),
-          ),
-
-          const SizedBox(height: 12),
-
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {
-                context.read<QuizViewModel>().resetQuiz();
-              },
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Try Again'),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
-  }
-
-  Color _getScoreColor(double score) {
-    if (score >= 80) return Colors.green;
-    if (score >= 60) return Colors.orange;
-    return Colors.red;
-  }
-
-  String _getResultTitle(double score) {
-    if (score >= 90) return 'Excellent!';
-    if (score >= 80) return 'Great Job!';
-    if (score >= 70) return 'Good Work!';
-    if (score >= 60) return 'Not Bad!';
-    return 'Keep Practicing!';
   }
 }

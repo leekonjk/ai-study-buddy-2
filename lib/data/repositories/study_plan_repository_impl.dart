@@ -9,6 +9,7 @@
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:studnet_ai_buddy/core/errors/failures.dart';
 import 'package:studnet_ai_buddy/core/utils/result.dart';
 import 'package:studnet_ai_buddy/domain/entities/study_plan.dart';
@@ -17,16 +18,18 @@ import 'package:studnet_ai_buddy/domain/repositories/study_plan_repository.dart'
 
 class StudyPlanRepositoryImpl implements StudyPlanRepository {
   final FirebaseFirestore _firestore;
-  final String _currentStudentId;
+  final FirebaseAuth _auth;
 
   // Firestore collection name (per schema)
   static const String _studyPlansCollection = 'study_plans';
 
   StudyPlanRepositoryImpl({
     required FirebaseFirestore firestore,
-    required String currentStudentId,
+    required FirebaseAuth auth,
   })  : _firestore = firestore,
-        _currentStudentId = currentStudentId;
+        _auth = auth;
+
+  String get _currentStudentId => _auth.currentUser?.uid ?? '';
 
   // ─────────────────────────────────────────────────────────────────────────
   // Study Plan Retrieval Operations
@@ -262,14 +265,15 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
     return StudyTask(
       id: data['taskId'] as String? ?? '',
       subjectId: data['subjectId'] as String? ?? '',
-      topicId: null, // Not in schema
       title: data['title'] as String? ?? '',
       description: '', // Not in schema, can be derived from title
+      date: data['scheduledDate'] != null 
+          ? (data['scheduledDate'] as Timestamp).toDate()
+          : DateTime.now(), // Not stored per-task in schema
       estimatedMinutes: data['estimatedMinutes'] as int? ?? 30,
       priority: TaskPriority.medium, // Not in schema, default
-      type: TaskType.learn, // Not in schema, default
-      scheduledDate: DateTime.now(), // Not stored per-task in schema
-      completedAt: isCompleted ? DateTime.now() : null,
+      type: TaskType.study, // Not in schema, default
+      isCompleted: isCompleted,
       aiReasoning: data['aiReasoning'] as String? ?? '',
     );
   }

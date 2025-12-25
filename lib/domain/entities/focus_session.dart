@@ -36,6 +36,19 @@ class FocusSession {
     return actualMinutes! / plannedMinutes;
   }
 
+  /// Computed getter for actual duration in minutes.
+  /// Returns actualMinutes if set, otherwise calculates from start/end time.
+  int get actualDurationMinutes {
+    if (actualMinutes != null) return actualMinutes!;
+    if (endTime == null) {
+      return DateTime.now().difference(startTime).inMinutes;
+    }
+    return endTime!.difference(startTime).inMinutes;
+  }
+
+  /// Computed getter for distraction count (alias for distractionsCount).
+  int get distractionCount => distractionsCount ?? 0;
+
   FocusSession copyWith({
     String? id,
     String? taskId,
@@ -67,3 +80,6 @@ enum FocusSessionStatus {
   paused,
   cancelled,
 }
+
+/// Alias for FocusSessionStatus for UI compatibility.
+typedef SessionStatus = FocusSessionStatus;

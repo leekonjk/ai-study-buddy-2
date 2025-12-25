@@ -6,9 +6,10 @@
 /// 
 /// Registration Order:
 /// 1. Firebase services (singletons)
-/// 2. Repositories (lazy singletons)
-/// 3. Domain services (lazy singletons)
-/// 4. ViewModels (factories - new instance per screen)
+/// 2. Local services (lazy singletons)
+/// 3. Repositories (lazy singletons)
+/// 4. Domain services (lazy singletons)
+/// 5. ViewModels (factories - new instance per screen)
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,16 +21,21 @@ import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/focus_session_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/quiz_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/study_plan_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/study_set_repository.dart';
 
 // Repository Implementations
 import 'package:studnet_ai_buddy/data/repositories/academic_repository_impl.dart';
 import 'package:studnet_ai_buddy/data/repositories/focus_session_repository_impl.dart';
 import 'package:studnet_ai_buddy/data/repositories/quiz_repository_impl.dart';
 import 'package:studnet_ai_buddy/data/repositories/study_plan_repository_impl.dart';
+import 'package:studnet_ai_buddy/data/repositories/study_set_repository_impl.dart';
 
 // Domain Services
 import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
+import 'package:studnet_ai_buddy/domain/services/file_upload_service.dart';
 import 'package:studnet_ai_buddy/domain/services/knowledge_estimation_service.dart';
+import 'package:studnet_ai_buddy/domain/services/local_storage_service.dart';
+import 'package:studnet_ai_buddy/domain/services/notification_service.dart';
 import 'package:studnet_ai_buddy/domain/services/risk_analysis_service.dart';
 import 'package:studnet_ai_buddy/domain/services/study_planner_service.dart';
 
@@ -38,6 +44,9 @@ import 'package:studnet_ai_buddy/domain/services/impl/ai_mentor_service_impl.dar
 import 'package:studnet_ai_buddy/domain/services/impl/knowledge_estimation_service_impl.dart';
 import 'package:studnet_ai_buddy/domain/services/impl/risk_analysis_service_impl.dart';
 import 'package:studnet_ai_buddy/domain/services/impl/study_planner_service_impl.dart';
+import 'package:studnet_ai_buddy/data/services/file_upload_service_impl.dart';
+import 'package:studnet_ai_buddy/data/services/local_storage_service_impl.dart';
+import 'package:studnet_ai_buddy/data/services/notification_service_impl.dart';
 
 // ViewModels
 import 'package:studnet_ai_buddy/presentation/viewmodels/dashboard/dashboard_viewmodel.dart';
@@ -54,6 +63,9 @@ final GetIt getIt = GetIt.instance;
 Future<void> initializeDependencies() async {
   // Register Firebase services
   _registerFirebaseServices();
+
+  // Register local services
+  _registerLocalServices();
 
   // Register repositories
   _registerRepositories();
@@ -78,11 +90,22 @@ void _registerFirebaseServices() {
   );
 }
 
-/// Returns the current student ID from Firebase Auth.
-/// Falls back to a default ID if not authenticated.
-String _getCurrentStudentId() {
-  final auth = getIt<FirebaseAuth>();
-  return auth.currentUser?.uid ?? 'anonymous_user';
+/// Registers local services as lazy singletons.
+void _registerLocalServices() {
+  // LocalStorageService
+  getIt.registerLazySingleton<LocalStorageService>(
+    () => LocalStorageServiceImpl(),
+  );
+
+  // NotificationService
+  getIt.registerLazySingleton<NotificationService>(
+    () => NotificationServiceImpl(),
+  );
+
+  // FileUploadService
+  getIt.registerLazySingleton<FileUploadService>(
+    () => FileUploadServiceImpl(),
+  );
 }
 
 /// Registers repository implementations as lazy singletons.
@@ -91,7 +114,7 @@ void _registerRepositories() {
   getIt.registerLazySingleton<AcademicRepository>(
     () => AcademicRepositoryImpl(
       firestore: getIt<FirebaseFirestore>(),
-      currentStudentId: _getCurrentStudentId(),
+      auth: getIt<FirebaseAuth>(),
     ),
   );
 
@@ -99,7 +122,7 @@ void _registerRepositories() {
   getIt.registerLazySingleton<QuizRepository>(
     () => QuizRepositoryImpl(
       firestore: getIt<FirebaseFirestore>(),
-      currentStudentId: _getCurrentStudentId(),
+      auth: getIt<FirebaseAuth>(),
     ),
   );
 
@@ -107,7 +130,7 @@ void _registerRepositories() {
   getIt.registerLazySingleton<StudyPlanRepository>(
     () => StudyPlanRepositoryImpl(
       firestore: getIt<FirebaseFirestore>(),
-      currentStudentId: _getCurrentStudentId(),
+      auth: getIt<FirebaseAuth>(),
     ),
   );
 
@@ -115,7 +138,15 @@ void _registerRepositories() {
   getIt.registerLazySingleton<FocusSessionRepository>(
     () => FocusSessionRepositoryImpl(
       firestore: getIt<FirebaseFirestore>(),
-      currentStudentId: _getCurrentStudentId(),
+      auth: getIt<FirebaseAuth>(),
+    ),
+  );
+
+  // StudySetRepository
+  getIt.registerLazySingleton<StudySetRepository>(
+    () => StudySetRepositoryImpl(
+      firestore: getIt<FirebaseFirestore>(),
+      auth: getIt<FirebaseAuth>(),
     ),
   );
 }

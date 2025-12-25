@@ -6,7 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:studnet_ai_buddy/core/theme/app_theme.dart';
+import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 
 class LoadingIndicator extends StatelessWidget {
   final String? message;
@@ -29,7 +29,7 @@ class LoadingIndicator extends StatelessWidget {
             height: size,
             child: const CircularProgressIndicator(
               strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.accentColor),
+              valueColor: AlwaysStoppedAnimation<Color>(StudyBuddyColors.primary),
             ),
           ),
           if (message != null) ...[
@@ -37,7 +37,7 @@ class LoadingIndicator extends StatelessWidget {
             Text(
               message!,
               style: const TextStyle(
-                color: AppTheme.textSecondary,
+                color: StudyBuddyColors.textSecondary,
                 fontSize: 14,
               ),
             ),

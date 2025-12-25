@@ -255,7 +255,7 @@ class DashboardViewModel extends BaseViewModel {
     if (taskIndex == -1) return;
 
     final task = _state.todayTasks[taskIndex];
-    final completedTask = task.copyWith(completedAt: DateTime.now());
+    final completedTask = task.copyWith(isCompleted: true);
 
     // Update local state immediately for responsiveness
     final updatedTasks = List<StudyTask>.from(_state.todayTasks);
@@ -310,7 +310,12 @@ class DashboardViewModel extends BaseViewModel {
   /// Generates time-based greeting message.
   String _generateGreeting(String? name) {
     final hour = DateTime.now().hour;
-    final displayName = name?.split(' ').first ?? 'there';
+    String displayName = name?.trim() ?? '';
+    if (displayName.isEmpty) {
+      displayName = 'Student';
+    } else {
+      displayName = displayName.split(' ').first;
+    }
 
     if (hour < 12) {
       return 'Good morning, $displayName! Ready to learn?';

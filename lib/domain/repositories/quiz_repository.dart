@@ -18,6 +18,7 @@ abstract class QuizRepository {
     required String subjectId,
     required double targetDifficulty,
     required int count,
+    String? topic,
   });
 
   /// Saves quiz result.

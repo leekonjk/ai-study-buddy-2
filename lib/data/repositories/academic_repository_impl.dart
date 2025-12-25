@@ -10,6 +10,8 @@
 library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:studnet_ai_buddy/core/errors/failures.dart';
 import 'package:studnet_ai_buddy/core/utils/result.dart';
 import 'package:studnet_ai_buddy/domain/entities/academic_profile.dart';
@@ -18,7 +20,7 @@ import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 
 class AcademicRepositoryImpl implements AcademicRepository {
   final FirebaseFirestore _firestore;
-  final String _currentStudentId;
+  final FirebaseAuth _auth;
 
   // Firestore collection names (per schema)
   static const String _studentsCollection = 'students';
@@ -26,9 +28,11 @@ class AcademicRepositoryImpl implements AcademicRepository {
 
   AcademicRepositoryImpl({
     required FirebaseFirestore firestore,
-    required String currentStudentId,
+    required FirebaseAuth auth,
   })  : _firestore = firestore,
-        _currentStudentId = currentStudentId;
+        _auth = auth;
+
+  String get _currentStudentId => _auth.currentUser?.uid ?? '';
 
   // ─────────────────────────────────────────────────────────────────────────
   // Academic Profile Operations
@@ -61,6 +65,13 @@ class AcademicRepositoryImpl implements AcademicRepository {
   @override
   Future<Result<void>> saveAcademicProfile(AcademicProfile profile) async {
     try {
+      final uid = _currentStudentId;
+      debugPrint('saving profile for uid: "$uid"');
+      if (uid.isEmpty) {
+        debugPrint('ERROR: User ID is empty. Auth state: ${_auth.currentUser}');
+        return const Err(NetworkFailure(message: 'User not authenticated'));
+      }
+      
       final data = _mapAcademicProfileToDocument(profile);
 
       await _firestore
@@ -191,6 +202,44 @@ class AcademicRepositoryImpl implements AcademicRepository {
     }
   }
 
+  @override
+  Future<Result<bool>> hasCompletedProfile() async {
+    try {
+      debugPrint('Checking if profile is complete...');
+      final profileResult = await getAcademicProfile();
+
+      return profileResult.fold(
+        onSuccess: (profile) {
+          if (profile == null) {
+            debugPrint('Profile is null - incomplete');
+            return const Success(false);
+          }
+          
+          // Profile is complete if all required fields are populated
+          final hasRequiredFields = profile.studentName.isNotEmpty &&
+              profile.programName.isNotEmpty &&
+              profile.enrolledSubjectIds.isNotEmpty;
+          
+          debugPrint('Profile validation:');
+          debugPrint('  - studentName: "${profile.studentName}" (${profile.studentName.isNotEmpty ? "✓" : "✗"})');
+          debugPrint('  - programName: "${profile.programName}" (${profile.programName.isNotEmpty ? "✓" : "✗"})');
+          debugPrint('  - subjects: ${profile.enrolledSubjectIds.length} (${profile.enrolledSubjectIds.isNotEmpty ? "✓" : "✗"})');
+          debugPrint('Profile complete: $hasRequiredFields');
+          
+          return Success(hasRequiredFields);
+        },
+        onFailure: (failure) {
+          debugPrint('Failed to get profile: ${failure.message}');
+          return const Success(false);
+        },
+      );
+    } catch (e, stackTrace) {
+      debugPrint('Exception in hasCompletedProfile: $e');
+      debugPrint('StackTrace: $stackTrace');
+      return const Success(false);
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
   // Mapping: Firestore Document → Domain Entity
   // ─────────────────────────────────────────────────────────────────────────
@@ -223,7 +272,7 @@ class AcademicRepositoryImpl implements AcademicRepository {
 
     return AcademicProfile(
       id: data['studentId'] as String? ?? doc.id,
-      studentName: '', // Name is in students collection, not here
+      studentName: data['studentName'] as String? ?? '', // ✅ FIX: Read from Firestore
       programName: data['degreeProgram'] as String? ?? '',
       currentSemester: data['semester'] as int? ?? 1,
       enrolledSubjectIds: enrolledSubjectIds,
@@ -239,13 +288,19 @@ class AcademicRepositoryImpl implements AcademicRepository {
   /// - name: string
   /// - creditHours: int
   Subject _mapDocumentToSubject(Map<String, dynamic> data) {
+    // Parse topics array
+    final topics = (data['topics'] as List<dynamic>?)
+            ?.map((t) => t.toString())
+            .toList() ??
+        [];
+
     return Subject(
       id: data['subjectId'] as String? ?? '',
       name: data['name'] as String? ?? '',
-      code: '', // Not in schema, can be derived or added later
+      code: data['code'] as String? ?? '', 
       creditHours: data['creditHours'] as int? ?? 3,
-      difficulty: SubjectDifficulty.intermediate, // Default, can be enhanced
-      topicIds: [], // Not in current schema
+      difficulty: SubjectDifficulty.intermediate, 
+      topicIds: topics,
     );
   }
 
@@ -255,24 +310,41 @@ class AcademicRepositoryImpl implements AcademicRepository {
 
   /// Maps AcademicProfile domain entity to Firestore document data.
   Map<String, dynamic> _mapAcademicProfileToDocument(AcademicProfile profile) {
+    // Build subjects array from enrolledSubjectIds
+    // Note: This relies on fetching full subject data first, but for seeding 
+    // we assume the logic injects full data. In a real app we'd query a master list.
+    // For now, simpler mapping is acceptable as we don't have the full Subject object 
+    // passed here, only the list of IDs in the entity. 
+    // However, saveSubjects() passes full Subject objects.
+    
+    // Fallback: This method might lose data if we only rely on IDs.
+    // But since saveSubjects updates the subjects array directly, 
+    // we should rely on saveSubjects for subject updates.
+    
     return {
       'studentId': _currentStudentId,
+      'studentName': profile.studentName, 
       'degreeProgram': profile.programName,
       'semester': profile.currentSemester,
-      'institution': '', // Can be added to entity if needed
-      'dailyStudyMinutes': 120, // Default, can be made configurable
+      'institution': '', 
+      // 'subjects': ... // We avoid overwriting subjects here to avoid data loss
+      // if we only have IDs. The profile save logic should arguably be separate
+      // from subject enrollment.
+      // But keeping existing logic for now.
+      'dailyStudyMinutes': 120, 
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
-      // Note: subjects array should be set separately via saveSubjects method
     };
   }
 
-  /// Maps Subject domain entity to Firestore document data (for embedding).
+  /// Maps Subject domain entity to Firestore document data.
   Map<String, dynamic> _mapSubjectToDocument(Subject subject) {
     return {
       'subjectId': subject.id,
       'name': subject.name,
+      'code': subject.code,
       'creditHours': subject.creditHours,
+      'topics': subject.topicIds,
     };
   }
 

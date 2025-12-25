@@ -45,5 +45,20 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Deep link URL scheme for GitHub OAuth redirect -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>studnet-ai-buddy.firebaseapp.com</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>studnetaibuddy</string>
+				<string>https</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

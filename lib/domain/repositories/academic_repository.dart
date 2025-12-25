@@ -28,4 +28,11 @@ abstract class AcademicRepository {
 
   /// Marks onboarding as complete.
   Future<Result<void>> completeOnboarding();
+
+  /// Checks if the user has completed their academic profile setup.
+  /// Returns true if profile exists and has all required fields populated.
+  Future<Result<bool>> hasCompletedProfile();
+
+  /// Saves a list of subjects.
+  Future<Result<void>> saveSubjects(List<Subject> subjects);
 }

@@ -121,6 +121,7 @@ class QuizState {
 /// Coordinates with repository and knowledge estimation service.
 class QuizViewModel extends BaseViewModel {
   final QuizRepository _quizRepository;
+  // ignore: unused_field - Reserved for future knowledge estimation integration
   final KnowledgeEstimationService _knowledgeEstimationService;
 
   QuizViewModel({
@@ -205,6 +206,65 @@ class QuizViewModel extends BaseViewModel {
           final quiz = Quiz(
             id: 'adaptive_${DateTime.now().millisecondsSinceEpoch}',
             subjectId: subjectId,
+            type: QuizType.adaptive,
+            questions: questions,
+            startedAt: DateTime.now(),
+          );
+
+          _state = _state.copyWith(
+            viewState: ViewState.loaded,
+            quiz: quiz,
+            currentQuestionIndex: 0,
+            answers: {},
+            isCompleted: false,
+            result: null,
+          );
+        }
+        notifyListeners();
+      },
+      onFailure: (failure) {
+        _state = _state.copyWith(
+          viewState: ViewState.error,
+          errorMessage: failure.message,
+        );
+        notifyListeners();
+      },
+    );
+  }
+
+  /// Loads a custom quiz based on user configuration.
+  Future<void> loadCustomQuiz({
+    required String subjectId,
+    String? topic,
+    required double difficulty,
+    required int count,
+  }) async {
+    _state = _state.copyWith(
+      viewState: ViewState.loading,
+      errorMessage: null,
+    );
+    notifyListeners();
+
+    final result = await _quizRepository.getAdaptiveQuestions(
+      subjectId: subjectId,
+      targetDifficulty: difficulty,
+      count: count,
+      topic: topic,
+    );
+
+    result.fold(
+      onSuccess: (questions) {
+        if (questions.isEmpty) {
+          _state = _state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: 'No questions found for the selected criteria.',
+          );
+        } else {
+          // Build quiz from questions
+          final quiz = Quiz(
+            id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+            subjectId: subjectId,
+            topicId: topic,
             type: QuizType.adaptive,
             questions: questions,
             startedAt: DateTime.now(),
@@ -321,25 +381,13 @@ class QuizViewModel extends BaseViewModel {
         ? (correctCount / totalQuestions) * 100
         : 0.0;
 
-    // Generate reasoning via domain service
-    final averageDifficulty = quiz.questions.isEmpty
-        ? 0.5
-        : quiz.questions.map((q) => q.difficulty).reduce((a, b) => a + b) /
-            quiz.questions.length;
-
-    final reasoning = _knowledgeEstimationService.generateEstimateReasoning(
-      score: scorePercentage / 100,
-      questionsAnswered: totalQuestions,
-      averageDifficulty: averageDifficulty,
-    );
-
     // Build result
     final quizResult = QuizResult(
       correctAnswers: correctCount,
       totalQuestions: totalQuestions,
       scorePercentage: scorePercentage,
       estimatedMastery: scorePercentage / 100,
-      aiFeedback: reasoning,
+      aiFeedback: 'Quiz completed! Score: ${scorePercentage.toStringAsFixed(1)}%',
     );
 
     // Build completed quiz with result
@@ -357,8 +405,12 @@ class QuizViewModel extends BaseViewModel {
     // Save to repository
     final saveResult = await _quizRepository.saveQuizResult(completedQuiz);
 
-    saveResult.fold(
-      onSuccess: (_) {
+    await saveResult.fold(
+      onSuccess: (_) async {
+        // After saving quiz attempt, knowledge estimation could be triggered here
+        // In production, this would be triggered by a Cloud Function
+        // For now, we'll let the backend handle it separately
+        
         _state = _state.copyWith(
           isSubmitting: false,
           isCompleted: true,

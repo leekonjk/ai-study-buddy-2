@@ -21,6 +21,14 @@ class _NameStepState extends State<NameStep> {
   final _nameController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     super.dispose();
@@ -43,10 +51,7 @@ class _NameStepState extends State<NameStep> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: ChatBubble(
-                  text: "What's your name?",
-                  isUser: false,
-                ),
+                child: ChatBubble(text: "What's your name?", isUser: false),
               ),
             ],
           ),
@@ -81,10 +86,7 @@ class _NameStepState extends State<NameStep> {
               ),
               child: const Text(
                 'Continue',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -101,4 +103,3 @@ class _NameStepState extends State<NameStep> {
     }
   }
 }
-

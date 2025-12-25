@@ -8,7 +8,7 @@ import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/presentation/auth/login_screen.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/main_shell.dart';
-import 'package:studnet_ai_buddy/presentation/screens/profile_setup/profile_setup_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/onboarding/onboarding_flow.dart';
 
 /// Widget that listens to auth state and shows appropriate screen.
 class AuthGate extends StatefulWidget {
@@ -68,12 +68,12 @@ class _AuthGateState extends State<AuthGate> {
                 debugPrint("AuthGate Error: ${onboardingSnapshot.error}");
                 // On error, default to safety (maybe user needs to retry or go to profile setup?)
                 // Let's assume ProfileSetup is safer than crashing.
-                return const ProfileSetupScreen();
+                return const OnboardingFlow();
               }
 
               // User hasn't completed onboarding - show profile setup
               if (onboardingSnapshot.data == false) {
-                return const ProfileSetupScreen();
+                return const OnboardingFlow();
               }
 
               // User completed onboarding - show main app

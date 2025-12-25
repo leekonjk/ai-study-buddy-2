@@ -22,7 +22,20 @@ class _EducationStepState extends State<EducationStep> {
   final _programController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    _universityController.addListener(_updateState);
+    _programController.addListener(_updateState);
+  }
+
+  void _updateState() {
+    setState(() {});
+  }
+
+  @override
   void dispose() {
+    _universityController.removeListener(_updateState);
+    _programController.removeListener(_updateState);
     _universityController.dispose();
     _programController.dispose();
     super.dispose();
@@ -46,7 +59,8 @@ class _EducationStepState extends State<EducationStep> {
               const SizedBox(width: 12),
               Expanded(
                 child: ChatBubble(
-                  text: "Tell me about your education. What university are you studying at, and what's your program?",
+                  text:
+                      "Tell me about your education. What university are you studying at, and what's your program?",
                   isUser: false,
                 ),
               ),
@@ -81,7 +95,8 @@ class _EducationStepState extends State<EducationStep> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _universityController.text.trim().isNotEmpty &&
+              onPressed:
+                  _universityController.text.trim().isNotEmpty &&
                       _programController.text.trim().isNotEmpty
                   ? _handleNext
                   : null,
@@ -95,10 +110,7 @@ class _EducationStepState extends State<EducationStep> {
               ),
               child: const Text(
                 'Continue',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -117,4 +129,3 @@ class _EducationStepState extends State<EducationStep> {
     }
   }
 }
-

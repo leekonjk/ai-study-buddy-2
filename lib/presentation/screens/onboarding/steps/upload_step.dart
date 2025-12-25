@@ -8,6 +8,7 @@ import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/chat_bubble.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/mascot_widget.dart';
+import 'package:studnet_ai_buddy/presentation/screens/onboarding/onboarding_flow.dart';
 
 /// File upload step for study materials.
 class UploadStep extends StatefulWidget {
@@ -289,6 +290,7 @@ class _UploadStepState extends State<UploadStep> {
       );
     }
     // Continue to next onboarding step
-    Navigator.of(context).pop();
+    final controller = OnboardingStepController.of(context);
+    controller?.onNext();
   }
 }

@@ -27,7 +27,7 @@ class _IntroOnboardingScreenState extends State<IntroOnboardingScreen> {
 
     if (mounted) {
       // Navigate to Login/Auth
-      Navigator.of(context).pushReplacementNamed(AppRoutes.login);
+      Navigator.of(context).pushReplacementNamed(AppRoutes.authGate);
     }
   }
 

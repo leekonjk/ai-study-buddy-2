@@ -124,6 +124,7 @@ class _DashboardContent extends StatelessWidget {
                           completedTasks: state.completedTasksCount,
                           totalTasks: state.todayTasks.length,
                           streakDays: state.currentStreakDays,
+                          dailyTaskGoal: state.dailyTaskGoal, // Added
                         ).animate().fadeIn(delay: 200.ms, duration: 300.ms),
                       ),
                     ),
@@ -412,6 +413,7 @@ class _ProgressSection extends StatelessWidget {
   final int completedTasks;
   final int totalTasks;
   final int streakDays;
+  final int dailyTaskGoal; // Added
 
   const _ProgressSection({
     required this.weeklyMinutes,
@@ -419,6 +421,7 @@ class _ProgressSection extends StatelessWidget {
     required this.completedTasks,
     required this.totalTasks,
     required this.streakDays,
+    required this.dailyTaskGoal,
   });
 
   @override
@@ -445,7 +448,7 @@ class _ProgressSection extends StatelessWidget {
             current: completedTasks,
             target: totalTasks > 0
                 ? totalTasks
-                : 5, // Default target if no tasks
+                : dailyTaskGoal, // Use preference
             icon: Icons.check_circle_rounded,
             color: AppColors.success,
           ),
@@ -605,7 +608,13 @@ class _QuickActionsGrid extends StatelessWidget {
               icon: Icons.settings_rounded, // New Settings shortcut
               label: 'Settings',
               color: Colors.grey,
-              onTap: () => Navigator.pushNamed(context, AppRoutes.settings),
+              onTap: () async {
+                await Navigator.pushNamed(context, AppRoutes.settings);
+                // Refresh dashboard when returning from settings
+                if (context.mounted) {
+                  context.read<DashboardViewModel>().loadDashboard();
+                }
+              },
             ),
           ],
         );

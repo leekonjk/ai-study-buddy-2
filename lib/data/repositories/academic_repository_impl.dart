@@ -172,9 +172,10 @@ class AcademicRepositoryImpl implements AcademicRepository {
       }
 
       final data = doc.data()!;
-      final subjects = data['subjects'] as List<dynamic>? ?? [];
+      final studentName = data['studentName'] as String? ?? '';
 
-      return Success(subjects.isNotEmpty);
+      // Onboarding is complete if we have a name (minimum requirement)
+      return Success(studentName.isNotEmpty);
     } on FirebaseException catch (e) {
       return Err(
         NetworkFailure(

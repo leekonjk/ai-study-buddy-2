@@ -19,12 +19,14 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   // Preference Keys
   static const String _keyFocusDuration = 'pref_focus_duration';
   static const String _keyWeeklyGoal = 'pref_weekly_goal';
+  static const String _keyDailyTaskGoal = 'pref_daily_task_goal'; // Added
   static const String _keyStudyReminders = 'pref_study_reminders';
   static const String _keyAchievementUnlocks = 'pref_achievement_unlocks';
 
   // State Variables
   int _focusDuration = 25;
   int _weeklyGoal = 15;
+  int _dailyTaskGoal = 5; // Added
   bool _studyReminders = true;
   bool _achievementUnlocks = true;
   List<Subject> _subjects = [];
@@ -41,6 +43,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     final prefs = getIt<LocalStorageService>();
     final duration = await prefs.getInt(_keyFocusDuration);
     final goal = await prefs.getInt(_keyWeeklyGoal);
+    final taskGoal = await prefs.getInt(_keyDailyTaskGoal); // Added
     final reminders = await prefs.getBool(_keyStudyReminders);
     final achievements = await prefs.getBool(_keyAchievementUnlocks);
 
@@ -48,6 +51,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
       setState(() {
         _focusDuration = duration ?? 25;
         _weeklyGoal = goal ?? 15;
+        _dailyTaskGoal = taskGoal ?? 5; // Added
         _studyReminders = reminders ?? true;
         _achievementUnlocks = achievements ?? true;
       });
@@ -359,6 +363,23 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
             ),
             onTap: _showGoalPicker,
           ),
+          const Divider(height: 1, color: StudyBuddyColors.border),
+          ListTile(
+            leading: const Icon(
+              Icons.task_alt_rounded,
+              color: StudyBuddyColors.textSecondary,
+            ),
+            title: const Text(
+              'Daily Task Goal',
+              style: TextStyle(color: StudyBuddyColors.textPrimary),
+            ),
+            subtitle: Text('$_dailyTaskGoal tasks per day'),
+            trailing: const Icon(
+              Icons.chevron_right_rounded,
+              color: StudyBuddyColors.textSecondary,
+            ),
+            onTap: _showTaskGoalPicker,
+          ),
         ],
       ),
     );
@@ -526,6 +547,65 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
     if (result != null) {
       setState(() => _weeklyGoal = result);
       _savePreference(_keyWeeklyGoal, result);
+    }
+  }
+
+  Future<void> _showTaskGoalPicker() async {
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) {
+        int selected = _dailyTaskGoal;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: StudyBuddyColors.cardBackground,
+              title: const Text(
+                'Daily Task Goal',
+                style: TextStyle(color: StudyBuddyColors.textPrimary),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$selected tasks',
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: StudyBuddyColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Slider(
+                    value: selected.toDouble(),
+                    min: 1,
+                    max: 20,
+                    divisions: 19,
+                    activeColor: StudyBuddyColors.primary,
+                    onChanged: (value) {
+                      setState(() => selected = value.toInt());
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, selected),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() => _dailyTaskGoal = result);
+      _savePreference(_keyDailyTaskGoal, result);
     }
   }
 

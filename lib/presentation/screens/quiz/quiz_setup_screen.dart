@@ -10,8 +10,15 @@ import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart'
 /// Screen for setting up quiz parameters.
 class QuizSetupScreen extends StatefulWidget {
   final String? subjectId;
+  final String? studySetId; // Added
+  final String? topic; // Added
 
-  const QuizSetupScreen({super.key, this.subjectId});
+  const QuizSetupScreen({
+    super.key,
+    this.subjectId,
+    this.studySetId,
+    this.topic,
+  });
 
   @override
   State<QuizSetupScreen> createState() => _QuizSetupScreenState();
@@ -25,7 +32,10 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
   void _startQuiz() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => QuizScreen(subjectId: widget.subjectId ?? ''),
+        builder: (_) => QuizScreen(
+          subjectId: widget.subjectId ?? '',
+          studySetId: widget.studySetId,
+        ),
       ),
     );
   }
@@ -67,140 +77,143 @@ class _QuizSetupScreenState extends State<QuizSetupScreen> {
                 const SizedBox(height: 32),
 
                 // Question count
-                const Text(
-                  'Number of Questions',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: StudyBuddyColors.textPrimary,
+                if (widget.studySetId == null) ...[
+                  const Text(
+                    'Number of Questions',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: StudyBuddyColors.textPrimary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [5, 10, 15, 20].map((count) {
-                    final isSelected = _questionCount == count;
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              _questionCount = count;
-                            });
-                          },
-                          borderRadius: StudyBuddyDecorations.borderRadiusM,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? StudyBuddyColors.primary
-                                  : StudyBuddyColors.cardBackground,
-                              borderRadius: StudyBuddyDecorations.borderRadiusM,
-                              border: Border.all(
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [5, 10, 15, 20].map((count) {
+                      final isSelected = _questionCount == count;
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: InkWell(
+                            onTap: () {
+                              setState(() {
+                                _questionCount = count;
+                              });
+                            },
+                            borderRadius: StudyBuddyDecorations.borderRadiusM,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: BoxDecoration(
                                 color: isSelected
                                     ? StudyBuddyColors.primary
-                                    : StudyBuddyColors.border,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '$count',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                                    : StudyBuddyColors.cardBackground,
+                                borderRadius:
+                                    StudyBuddyDecorations.borderRadiusM,
+                                border: Border.all(
                                   color: isSelected
-                                      ? Colors.white
-                                      : StudyBuddyColors.textPrimary,
+                                      ? StudyBuddyColors.primary
+                                      : StudyBuddyColors.border,
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$count',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : StudyBuddyColors.textPrimary,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 32),
-
-                // Difficulty
-                const Text(
-                  'Difficulty',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: StudyBuddyColors.textPrimary,
+                      );
+                    }).toList(),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _buildDifficultyOption(
-                      'Easy',
-                      'easy',
-                      StudyBuddyColors.success,
-                    ),
-                    const SizedBox(width: 12),
-                    _buildDifficultyOption(
-                      'Medium',
-                      'medium',
-                      StudyBuddyColors.warning,
-                    ),
-                    const SizedBox(width: 12),
-                    _buildDifficultyOption(
-                      'Hard',
-                      'hard',
-                      StudyBuddyColors.error,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
+                  const SizedBox(height: 32),
 
-                // Timed mode
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: StudyBuddyDecorations.cardDecoration,
-                  child: Row(
+                  // Difficulty
+                  const Text(
+                    'Difficulty',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: StudyBuddyColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
                     children: [
-                      const Icon(
-                        Icons.timer_rounded,
-                        color: StudyBuddyColors.textSecondary,
+                      _buildDifficultyOption(
+                        'Easy',
+                        'easy',
+                        StudyBuddyColors.success,
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Timed Mode',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: StudyBuddyColors.textPrimary,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Answer each question within a time limit',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: StudyBuddyColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
+                      _buildDifficultyOption(
+                        'Medium',
+                        'medium',
+                        StudyBuddyColors.warning,
                       ),
-                      Switch(
-                        value: _timedMode,
-                        onChanged: (value) {
-                          setState(() {
-                            _timedMode = value;
-                          });
-                        },
-                        activeThumbColor: StudyBuddyColors.primary,
+                      const SizedBox(width: 12),
+                      _buildDifficultyOption(
+                        'Hard',
+                        'hard',
+                        StudyBuddyColors.error,
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 32),
+
+                  // Timed mode
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: StudyBuddyDecorations.cardDecoration,
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.timer_rounded,
+                          color: StudyBuddyColors.textSecondary,
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Timed Mode',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: StudyBuddyColors.textPrimary,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Answer each question within a time limit',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: StudyBuddyColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: _timedMode,
+                          onChanged: (value) {
+                            setState(() {
+                              _timedMode = value;
+                            });
+                          },
+                          activeThumbColor: StudyBuddyColors.primary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 const Spacer(),
 

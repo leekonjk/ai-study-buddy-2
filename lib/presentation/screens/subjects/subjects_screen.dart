@@ -129,6 +129,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddSubjectDialog(),
+        heroTag: 'subjects_fab',
         backgroundColor: StudyBuddyColors.primary,
         child: const Icon(Icons.add_rounded, color: Colors.white),
       ),

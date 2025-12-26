@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for Study Buddy App
+// These rules control access to files stored in Firebase Storage
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the file
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to validate file size (max 10MB)
+    function isValidSize() {
+      return request.resource.size <= 10 * 1024 * 1024;
+    }
+    
+    // Helper function to validate allowed file types
+    function isAllowedFileType() {
+      return request.resource.contentType.matches('image/.*') ||
+             request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType == 'application/msword' ||
+             request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+             request.resource.contentType == 'text/plain';
+    }
+    
+    // User files: users/{userId}/files/{fileName}
+    // Only the owner can read, write, and delete their files
+    match /users/{userId}/files/{fileName} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidSize() && isAllowedFileType();
+      allow delete: if isOwner(userId);
+    }
+    
+    // User files subdirectories (for nested organization)
+    match /users/{userId}/files/{allPaths=**} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidSize() && isAllowedFileType();
+      allow delete: if isOwner(userId);
+    }
+    
+    // Default: deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

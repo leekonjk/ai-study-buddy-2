@@ -1,16 +1,17 @@
 /// Quiz ViewModel.
 /// Manages state for diagnostic and adaptive quizzes.
-/// 
+///
 /// Layer: Presentation
 /// Responsibility: Handle quiz flow, answer selection, results.
 /// Inputs: Quiz questions, user answers.
 /// Outputs: Quiz state, completion triggers knowledge update.
-/// 
+///
 /// Dependencies: QuizRepository, KnowledgeEstimationService
 library;
 
 import 'package:studnet_ai_buddy/domain/entities/quiz.dart';
 import 'package:studnet_ai_buddy/domain/repositories/quiz_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/flashcard_repository.dart'; // Added
 import 'package:studnet_ai_buddy/domain/services/knowledge_estimation_service.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 
@@ -121,14 +122,17 @@ class QuizState {
 /// Coordinates with repository and knowledge estimation service.
 class QuizViewModel extends BaseViewModel {
   final QuizRepository _quizRepository;
+  final FlashcardRepository _flashcardRepository; // Added
   // ignore: unused_field - Reserved for future knowledge estimation integration
   final KnowledgeEstimationService _knowledgeEstimationService;
 
   QuizViewModel({
     required QuizRepository quizRepository,
+    required FlashcardRepository flashcardRepository, // Added
     required KnowledgeEstimationService knowledgeEstimationService,
-  })  : _quizRepository = quizRepository,
-        _knowledgeEstimationService = knowledgeEstimationService;
+  }) : _quizRepository = quizRepository,
+       _flashcardRepository = flashcardRepository, // Added
+       _knowledgeEstimationService = knowledgeEstimationService;
 
   QuizState _state = const QuizState();
   QuizState get state => _state;
@@ -139,10 +143,7 @@ class QuizViewModel extends BaseViewModel {
 
   /// Loads a diagnostic quiz for the given subject.
   Future<void> loadDiagnosticQuiz(String subjectId) async {
-    _state = _state.copyWith(
-      viewState: ViewState.loading,
-      errorMessage: null,
-    );
+    _state = _state.copyWith(viewState: ViewState.loading, errorMessage: null);
     notifyListeners();
 
     final result = await _quizRepository.getDiagnosticQuiz(subjectId);
@@ -182,10 +183,7 @@ class QuizViewModel extends BaseViewModel {
     required double targetDifficulty,
     int questionCount = 5,
   }) async {
-    _state = _state.copyWith(
-      viewState: ViewState.loading,
-      errorMessage: null,
-    );
+    _state = _state.copyWith(viewState: ViewState.loading, errorMessage: null);
     notifyListeners();
 
     final result = await _quizRepository.getAdaptiveQuestions(
@@ -239,10 +237,7 @@ class QuizViewModel extends BaseViewModel {
     required double difficulty,
     required int count,
   }) async {
-    _state = _state.copyWith(
-      viewState: ViewState.loading,
-      errorMessage: null,
-    );
+    _state = _state.copyWith(viewState: ViewState.loading, errorMessage: null);
     notifyListeners();
 
     final result = await _quizRepository.getAdaptiveQuestions(
@@ -266,6 +261,84 @@ class QuizViewModel extends BaseViewModel {
             subjectId: subjectId,
             topicId: topic,
             type: QuizType.adaptive,
+            questions: questions,
+            startedAt: DateTime.now(),
+          );
+
+          _state = _state.copyWith(
+            viewState: ViewState.loaded,
+            quiz: quiz,
+            currentQuestionIndex: 0,
+            answers: {},
+            isCompleted: false,
+            result: null,
+          );
+        }
+        notifyListeners();
+      },
+      onFailure: (failure) {
+        _state = _state.copyWith(
+          viewState: ViewState.error,
+          errorMessage: failure.message,
+        );
+        notifyListeners();
+      },
+    );
+  }
+
+  /// Loads a quiz from a study set (Flashcards).
+  Future<void> loadStudySetQuiz(String studySetId) async {
+    _state = _state.copyWith(viewState: ViewState.loading, errorMessage: null);
+    notifyListeners();
+
+    final result = await _flashcardRepository.getFlashcardsByStudySetId(
+      studySetId,
+    );
+
+    result.fold(
+      onSuccess: (flashcards) {
+        if (flashcards.isEmpty) {
+          _state = _state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: 'Study set has no flashcards',
+          );
+        } else {
+          // Convert flashcards to questions
+          final questions = <QuizQuestion>[];
+
+          for (final card in flashcards) {
+            // Create options (Correct + up to 3 distractors)
+            final otherCards = flashcards
+                .where((c) => c.id != card.id)
+                .toList();
+            otherCards.shuffle();
+            final distractors = otherCards
+                .take(3)
+                .map((c) => c.definition)
+                .toList();
+
+            final List<String> options = [card.definition, ...distractors];
+            options.shuffle();
+
+            final correctIndex = options.indexOf(card.definition);
+
+            questions.add(
+              QuizQuestion(
+                id: card.id,
+                questionText: card.term,
+                options: options,
+                correctOptionIndex: correctIndex,
+                difficulty: 0.5,
+                selectedOptionIndex: null,
+              ),
+            );
+          }
+
+          // Build quiz
+          final quiz = Quiz(
+            id: 'studyset_${DateTime.now().millisecondsSinceEpoch}',
+            subjectId: '', // Not tied to subject ID directly here
+            type: QuizType.practice,
             questions: questions,
             startedAt: DateTime.now(),
           );
@@ -387,7 +460,8 @@ class QuizViewModel extends BaseViewModel {
       totalQuestions: totalQuestions,
       scorePercentage: scorePercentage,
       estimatedMastery: scorePercentage / 100,
-      aiFeedback: 'Quiz completed! Score: ${scorePercentage.toStringAsFixed(1)}%',
+      aiFeedback:
+          'Quiz completed! Score: ${scorePercentage.toStringAsFixed(1)}%',
     );
 
     // Build completed quiz with result
@@ -410,7 +484,7 @@ class QuizViewModel extends BaseViewModel {
         // After saving quiz attempt, knowledge estimation could be triggered here
         // In production, this would be triggered by a Cloud Function
         // For now, we'll let the backend handle it separately
-        
+
         _state = _state.copyWith(
           isSubmitting: false,
           isCompleted: true,

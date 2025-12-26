@@ -4,87 +4,37 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
+import 'package:studnet_ai_buddy/di/service_locator.dart';
+import 'package:studnet_ai_buddy/domain/entities/note.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
-
-/// Demo note data.
-class NoteData {
-  final String id;
-  final String title;
-  final String content;
-  final String subject;
-  final DateTime createdAt;
-  final Color color;
-
-  const NoteData({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.subject,
-    required this.createdAt,
-    required this.color,
-  });
-}
+import 'package:studnet_ai_buddy/presentation/viewmodels/notes/notes_viewmodel.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/lottie_loading.dart';
+import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 
 /// Notes list screen.
-class NotesScreen extends StatefulWidget {
+class NotesScreen extends StatelessWidget {
   const NotesScreen({super.key});
 
   @override
-  State<NotesScreen> createState() => _NotesScreenState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider<NotesViewModel>(
+      create: (_) => getIt<NotesViewModel>()..loadNotes(),
+      child: const _NotesContent(),
+    );
+  }
 }
 
-class _NotesScreenState extends State<NotesScreen> {
-  String _selectedFilter = 'All';
-
-  final List<NoteData> _notes = [
-    NoteData(
-      id: '1',
-      title: 'Photosynthesis Process',
-      content:
-          'Light-dependent reactions occur in thylakoid membranes. Light energy converts water and CO2 into glucose and oxygen. Key factors: chlorophyll, sunlight intensity, CO2 concentration.',
-      subject: 'Biology',
-      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-      color: Colors.green,
-    ),
-    NoteData(
-      id: '2',
-      title: 'Quadratic Formula',
-      content:
-          'x = (-b ± √(b²-4ac)) / 2a\n\nUsed to solve ax² + bx + c = 0\nDiscriminant (b²-4ac) determines number of solutions',
-      subject: 'Mathematics',
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      color: Colors.blue,
-    ),
-    NoteData(
-      id: '3',
-      title: 'Newton\'s Laws of Motion',
-      content:
-          '1st Law: Object at rest stays at rest\n2nd Law: F = ma\n3rd Law: Every action has equal and opposite reaction',
-      subject: 'Physics',
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      color: Colors.orange,
-    ),
-    NoteData(
-      id: '4',
-      title: 'Data Structures Overview',
-      content:
-          'Arrays: O(1) access, O(n) insert\nLinked Lists: O(n) access, O(1) insert\nHash Tables: O(1) average for all operations',
-      subject: 'Computer Science',
-      createdAt: DateTime.now().subtract(const Duration(days: 3)),
-      color: Colors.purple,
-    ),
-  ];
-
-  List<NoteData> get _filteredNotes {
-    if (_selectedFilter == 'All') return _notes;
-    return _notes.where((n) => n.subject == _selectedFilter).toList();
-  }
-
-  List<String> get _subjects => _notes.map((n) => n.subject).toSet().toList();
+class _NotesContent extends StatelessWidget {
+  const _NotesContent();
 
   @override
   Widget build(BuildContext context) {
+    // Watch the ViewModel state
+    final viewModel = context.watch<NotesViewModel>();
+    final state = viewModel.state;
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -94,30 +44,50 @@ class _NotesScreenState extends State<NotesScreen> {
           child: Column(
             children: [
               // Header
-              _buildHeader(),
+              _buildHeader(context),
+
+              // Error banner
+              if (state.errorMessage != null)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  color: StudyBuddyColors.error,
+                  width: double.infinity,
+                  child: Text(
+                    state.errorMessage!,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
 
               // Filters
-              _buildFilters(),
+              _buildFilters(context, state),
 
               // Notes list
               Expanded(
-                child: _filteredNotes.isEmpty
-                    ? _buildEmptyState()
-                    : _buildNotesList(),
+                child: state.viewState == ViewState.loading
+                    ? const Center(
+                        child: LottieLoading(
+                          size: 100,
+                          message: "Loading notes...",
+                        ),
+                      )
+                    : (state.filteredNotes.isEmpty
+                          ? _buildEmptyState()
+                          : _buildNotesList(state.filteredNotes)),
               ),
             ],
           ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showCreateNoteSheet(),
+        onPressed: () => _showCreateNoteSheet(context),
+        heroTag: 'notes_fab',
         backgroundColor: StudyBuddyColors.primary,
         child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Row(
@@ -150,7 +120,7 @@ class _NotesScreenState extends State<NotesScreen> {
           ),
           IconButton(
             onPressed: () {
-              // Search notes
+              // Search notes logic could be added here
             },
             icon: const Icon(
               Icons.search_rounded,
@@ -162,31 +132,45 @@ class _NotesScreenState extends State<NotesScreen> {
     ).animate().fadeIn().slideY(begin: -0.1, end: 0);
   }
 
-  Widget _buildFilters() {
+  Widget _buildFilters(BuildContext context, NotesState state) {
+    // Only show filters if we have distinct subjects (plus 'All')
+    final subjects = ['All', ...state.subjects];
+    if (subjects.length <= 1) return const SizedBox.shrink();
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
-        children: [
-          _buildFilterChip('All', _notes.length),
-          ..._subjects.map(
-            (subject) => _buildFilterChip(
-              subject,
-              _notes.where((n) => n.subject == subject).length,
-            ),
-          ),
-        ],
+        children: subjects.map((subject) {
+          int count;
+          if (subject == 'All') {
+            count = state.notes.length;
+          } else {
+            count = state.notes.where((n) => n.subject == subject).length;
+          }
+          return _buildFilterChip(
+            context,
+            subject,
+            count,
+            state.selectedFilter,
+          );
+        }).toList(),
       ),
     ).animate().fadeIn(delay: 100.ms).slideX(begin: -0.1, end: 0);
   }
 
-  Widget _buildFilterChip(String label, int count) {
-    final isSelected = _selectedFilter == label;
+  Widget _buildFilterChip(
+    BuildContext context,
+    String label,
+    int count,
+    String selectedFilter,
+  ) {
+    final isSelected = selectedFilter == label;
 
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
-        onTap: () => setState(() => _selectedFilter = label),
+        onTap: () => context.read<NotesViewModel>().setFilter(label),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -273,21 +257,24 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
-  Widget _buildNotesList() {
+  Widget _buildNotesList(List<Note> notes) {
     return ListView.builder(
       padding: const EdgeInsets.all(24),
-      itemCount: _filteredNotes.length,
+      itemCount: notes.length,
       itemBuilder: (context, index) {
         return _buildNoteCard(
-          _filteredNotes[index],
+          context,
+          notes[index],
         ).animate().fadeIn(delay: (index * 50).ms).slideY(begin: 0.1, end: 0);
       },
     );
   }
 
-  Widget _buildNoteCard(NoteData note) {
+  Widget _buildNoteCard(BuildContext context, Note note) {
+    final noteColor = _parseColor(note.color);
+
     return GestureDetector(
-      onTap: () => _showNoteDetail(note),
+      onTap: () => _showNoteDetail(context, note, noteColor),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
@@ -302,7 +289,7 @@ class _NotesScreenState extends State<NotesScreen> {
             Container(
               height: 4,
               decoration: BoxDecoration(
-                color: note.color,
+                color: noteColor,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
@@ -321,7 +308,7 @@ class _NotesScreenState extends State<NotesScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: note.color.withValues(alpha: 0.1),
+                          color: noteColor.withValues(alpha: 0.1),
                           borderRadius: StudyBuddyDecorations.borderRadiusFull,
                         ),
                         child: Text(
@@ -329,7 +316,7 @@ class _NotesScreenState extends State<NotesScreen> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: note.color,
+                            color: noteColor,
                           ),
                         ),
                       ),
@@ -372,6 +359,23 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
+  Color _parseColor(String colorHex) {
+    // If it's a numeric hex string like '0xFF...'
+    if (colorHex.startsWith('0x')) {
+      return Color(int.parse(colorHex));
+    }
+    // If it's pure hex 'AABBCC' or '#AABBCC'
+    var hex = colorHex.replaceAll('#', '');
+    if (hex.length == 6) {
+      hex = 'FF$hex';
+    }
+    if (hex.length == 8) {
+      return Color(int.parse('0x$hex'));
+    }
+    // Fallback
+    return Colors.blue;
+  }
+
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
@@ -390,7 +394,7 @@ class _NotesScreenState extends State<NotesScreen> {
     }
   }
 
-  void _showNoteDetail(NoteData note) {
+  void _showNoteDetail(BuildContext context, Note note, Color noteColor) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -417,7 +421,7 @@ class _NotesScreenState extends State<NotesScreen> {
                 ),
               ),
               // Color bar
-              Container(height: 4, color: note.color),
+              Container(height: 4, color: noteColor),
               Expanded(
                 child: SingleChildScrollView(
                   controller: scrollController,
@@ -433,7 +437,7 @@ class _NotesScreenState extends State<NotesScreen> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: note.color.withValues(alpha: 0.1),
+                              color: noteColor.withValues(alpha: 0.1),
                               borderRadius:
                                   StudyBuddyDecorations.borderRadiusFull,
                             ),
@@ -442,23 +446,17 @@ class _NotesScreenState extends State<NotesScreen> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: note.color,
+                                color: noteColor,
                               ),
                             ),
                           ),
                           const Spacer(),
                           IconButton(
                             onPressed: () {
-                              // Edit note
-                            },
-                            icon: const Icon(
-                              Icons.edit_rounded,
-                              color: StudyBuddyColors.textSecondary,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              // Delete note
+                              // Delete note logic
+                              context.read<NotesViewModel>().deleteNote(
+                                note.id,
+                              );
                               Navigator.pop(context);
                             },
                             icon: const Icon(
@@ -505,7 +503,7 @@ class _NotesScreenState extends State<NotesScreen> {
     );
   }
 
-  void _showCreateNoteSheet() {
+  void _showCreateNoteSheet(BuildContext context) {
     final titleController = TextEditingController();
     final contentController = TextEditingController();
     String selectedSubject = 'General';
@@ -534,10 +532,10 @@ class _NotesScreenState extends State<NotesScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
           ),
           child: Container(
             decoration: BoxDecoration(
@@ -700,20 +698,24 @@ class _NotesScreenState extends State<NotesScreen> {
                         child: ElevatedButton(
                           onPressed: () {
                             if (titleController.text.isNotEmpty) {
-                              // Create new note and add to list
-                              final newNote = NoteData(
-                                id: DateTime.now().millisecondsSinceEpoch
-                                    .toString(),
+                              // Convert Color to Hex String
+                              // Using component accessors as .value is deprecated
+                              final int colorValue =
+                                  (selectedColor.a.toInt() << 24) |
+                                  (selectedColor.r.toInt() << 16) |
+                                  (selectedColor.g.toInt() << 8) |
+                                  selectedColor.b.toInt();
+                              final colorHex =
+                                  '0x${colorValue.toRadixString(16).toUpperCase()}';
+
+                              context.read<NotesViewModel>().createNote(
                                 title: titleController.text,
                                 content: contentController.text,
                                 subject: selectedSubject,
-                                createdAt: DateTime.now(),
-                                color: selectedColor,
+                                colorHex: colorHex,
                               );
-                              setState(() {
-                                _notes.insert(0, newNote);
-                              });
-                              Navigator.pop(context);
+
+                              Navigator.pop(ctx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Note created'),

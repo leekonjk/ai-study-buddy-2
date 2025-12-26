@@ -1,6 +1,6 @@
 /// Academic Profile Data Model.
 /// DTO for serialization/deserialization of AcademicProfile entity.
-/// 
+///
 /// Layer: Data
 /// Responsibility: JSON conversion for local storage and API.
 library;
@@ -11,6 +11,7 @@ class AcademicProfileModel extends AcademicProfile {
   const AcademicProfileModel({
     required super.id,
     required super.studentName,
+    required super.universityName,
     required super.programName,
     required super.currentSemester,
     required super.enrolledSubjectIds,
@@ -22,6 +23,7 @@ class AcademicProfileModel extends AcademicProfile {
     return AcademicProfileModel(
       id: json['id'] as String,
       studentName: json['studentName'] as String,
+      universityName: json['universityName'] as String? ?? '',
       programName: json['programName'] as String,
       currentSemester: json['currentSemester'] as int,
       enrolledSubjectIds: List<String>.from(json['enrolledSubjectIds'] as List),
@@ -36,6 +38,7 @@ class AcademicProfileModel extends AcademicProfile {
     return {
       'id': id,
       'studentName': studentName,
+      'universityName': universityName,
       'programName': programName,
       'currentSemester': currentSemester,
       'enrolledSubjectIds': enrolledSubjectIds,
@@ -48,6 +51,7 @@ class AcademicProfileModel extends AcademicProfile {
     return AcademicProfileModel(
       id: entity.id,
       studentName: entity.studentName,
+      universityName: entity.universityName,
       programName: entity.programName,
       currentSemester: entity.currentSemester,
       enrolledSubjectIds: entity.enrolledSubjectIds,

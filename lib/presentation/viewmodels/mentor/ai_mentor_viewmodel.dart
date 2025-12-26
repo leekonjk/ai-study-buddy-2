@@ -1,11 +1,11 @@
 /// AI Mentor ViewModel.
 /// Manages state for AI Mentor advisory screen.
-/// 
+///
 /// Layer: Presentation
 /// Responsibility: Display AI insights, handle explanations.
 /// Inputs: AI insights, user queries.
 /// Outputs: Mentor state with insights and explanations.
-/// 
+///
 /// Dependencies: AIMentorService, AcademicRepository
 library;
 
@@ -13,6 +13,8 @@ import 'package:studnet_ai_buddy/domain/entities/ai_insight.dart';
 import 'package:studnet_ai_buddy/domain/entities/knowledge_level.dart';
 import 'package:studnet_ai_buddy/domain/entities/risk_assessment.dart';
 import 'package:studnet_ai_buddy/domain/entities/study_plan.dart';
+import 'package:studnet_ai_buddy/domain/entities/academic_profile.dart'; // Added
+import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart'; // Added
 import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 
@@ -106,10 +108,13 @@ class AIMentorState {
 /// Coordinates with AI mentor service to generate and display insights.
 class AIMentorViewModel extends BaseViewModel {
   final AIMentorService _aiMentorService;
+  final AcademicRepository _academicRepository; // Added
 
   AIMentorViewModel({
     required AIMentorService aiMentorService,
-  }) : _aiMentorService = aiMentorService;
+    required AcademicRepository academicRepository, // Added
+  }) : _aiMentorService = aiMentorService,
+       _academicRepository = academicRepository;
 
   AIMentorState _state = const AIMentorState();
   AIMentorState get state => _state;
@@ -118,6 +123,7 @@ class AIMentorViewModel extends BaseViewModel {
   List<KnowledgeLevel> _knowledgeLevels = [];
   List<RiskAssessment> _riskAssessments = [];
   StudyPlan? _currentPlan;
+  AcademicProfile? _cachedProfile; // Added cache
 
   // ─────────────────────────────────────────────────────────────────────────
   // Initialization
@@ -129,10 +135,7 @@ class AIMentorViewModel extends BaseViewModel {
     required List<RiskAssessment> riskAssessments,
     StudyPlan? currentPlan,
   }) async {
-    _state = _state.copyWith(
-      viewState: ViewState.loading,
-      errorMessage: null,
-    );
+    _state = _state.copyWith(viewState: ViewState.loading, errorMessage: null);
     notifyListeners();
 
     // Cache data for later use
@@ -141,16 +144,23 @@ class AIMentorViewModel extends BaseViewModel {
     _currentPlan = currentPlan;
 
     try {
+      // Fetch Academic Profile if not cached
+      if (_cachedProfile == null) {
+        final profileResult = await _academicRepository.getAcademicProfile();
+        profileResult.fold(
+          onSuccess: (p) => _cachedProfile = p,
+          onFailure: (_) {}, // Ignore error, proceed without context
+        );
+      }
+
       final insights = await _aiMentorService.generateDailyInsights(
         knowledgeLevels: knowledgeLevels,
         riskAssessments: riskAssessments,
         currentPlan: currentPlan,
+        profile: _cachedProfile, // Pass profile
       );
 
-      _state = _state.copyWith(
-        viewState: ViewState.loaded,
-        insights: insights,
-      );
+      _state = _state.copyWith(viewState: ViewState.loaded, insights: insights);
       notifyListeners();
     } catch (e) {
       _state = _state.copyWith(
@@ -271,9 +281,7 @@ class AIMentorViewModel extends BaseViewModel {
 
   /// Clears the current explanation.
   void clearExplanation() {
-    _state = _state.copyWith(
-      selectedInsightExplanation: null,
-    );
+    _state = _state.copyWith(selectedInsightExplanation: null);
     notifyListeners();
   }
 
@@ -293,9 +301,7 @@ class AIMentorViewModel extends BaseViewModel {
       _state = _state.copyWith(insights: updatedInsights);
       notifyListeners();
     } catch (e) {
-      _state = _state.copyWith(
-        errorMessage: 'Failed to generate warning: $e',
-      );
+      _state = _state.copyWith(errorMessage: 'Failed to generate warning: $e');
       notifyListeners();
     }
   }
@@ -320,9 +326,7 @@ class AIMentorViewModel extends BaseViewModel {
       _state = _state.copyWith(insights: updatedInsights);
       notifyListeners();
     } catch (e) {
-      _state = _state.copyWith(
-        errorMessage: 'Failed to generate feedback: $e',
-      );
+      _state = _state.copyWith(errorMessage: 'Failed to generate feedback: $e');
       notifyListeners();
     }
   }

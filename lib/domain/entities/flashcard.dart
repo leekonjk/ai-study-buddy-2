@@ -9,6 +9,7 @@ class Flashcard {
   final String term;
   final String definition;
   final String? imageUrl;
+  final String creatorId; // Added for Firestore security rules
   final int repetitions;
   final double easeFactor;
   final int interval;
@@ -22,6 +23,7 @@ class Flashcard {
     required this.term,
     required this.definition,
     this.imageUrl,
+    required this.creatorId, // Added
     this.repetitions = 0,
     this.easeFactor = 2.5,
     this.interval = 1,
@@ -36,6 +38,7 @@ class Flashcard {
     String? term,
     String? definition,
     String? imageUrl,
+    String? creatorId,
     int? repetitions,
     double? easeFactor,
     int? interval,
@@ -49,6 +52,7 @@ class Flashcard {
       term: term ?? this.term,
       definition: definition ?? this.definition,
       imageUrl: imageUrl ?? this.imageUrl,
+      creatorId: creatorId ?? this.creatorId,
       repetitions: repetitions ?? this.repetitions,
       easeFactor: easeFactor ?? this.easeFactor,
       interval: interval ?? this.interval,
@@ -65,6 +69,7 @@ class Flashcard {
       'term': term,
       'definition': definition,
       'imageUrl': imageUrl,
+      'creatorId': creatorId,
       'repetitions': repetitions,
       'easeFactor': easeFactor,
       'interval': interval,
@@ -76,19 +81,24 @@ class Flashcard {
 
   factory Flashcard.fromJson(Map<String, dynamic> json) {
     return Flashcard(
-      id: json['id'] as String,
-      studySetId: json['studySetId'] as String,
-      term: json['term'] as String,
-      definition: json['definition'] as String,
+      id: json['id'] as String? ?? '',
+      studySetId: json['studySetId'] as String? ?? '',
+      term: json['term'] as String? ?? '',
+      definition: json['definition'] as String? ?? '',
       imageUrl: json['imageUrl'] as String?,
+      creatorId: json['creatorId'] as String? ?? '',
       repetitions: json['repetitions'] as int? ?? 0,
       easeFactor: (json['easeFactor'] as num?)?.toDouble() ?? 2.5,
       interval: json['interval'] as int? ?? 1,
       nextReviewDate: json['nextReviewDate'] != null
-          ? DateTime.parse(json['nextReviewDate'] as String)
+          ? DateTime.tryParse(json['nextReviewDate'] as String)
           : null,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      lastUpdated: DateTime.parse(json['lastUpdated'] as String),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
+      lastUpdated: json['lastUpdated'] != null
+          ? DateTime.parse(json['lastUpdated'] as String)
+          : DateTime.now(),
     );
   }
 }

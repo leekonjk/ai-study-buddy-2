@@ -20,6 +20,7 @@ import 'package:studnet_ai_buddy/presentation/screens/mentor/ai_mentor_screen.da
 import 'package:studnet_ai_buddy/presentation/screens/onboarding/onboarding_flow.dart';
 import 'package:studnet_ai_buddy/presentation/screens/planner/enhanced_ai_planner_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/profile/profile_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/settings/preferences_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/profile_setup/profile_setup_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/quiz/quiz_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/quiz/quiz_setup_screen.dart';
@@ -27,7 +28,9 @@ import 'package:studnet_ai_buddy/presentation/screens/study_plan/study_plan_scre
 import 'package:studnet_ai_buddy/presentation/screens/subjects/subject_detail_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/subjects/subjects_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/notes/notes_screen.dart';
-import 'package:studnet_ai_buddy/presentation/screens/achievements/achievements_screen.dart';
+import 'package:studnet_ai_buddy/presentation/screens/notes/note_editor_screen.dart'; // Added
+import 'package:studnet_ai_buddy/domain/entities/note.dart'; // Added
+import 'package:studnet_ai_buddy/presentation/screens/achievements/achievements_loading_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/statistics/statistics_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/settings/settings_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/quiz/quiz_review_screen.dart';
@@ -59,8 +62,10 @@ class AppRoutes {
   static const String aiChat = '/ai-chat';
   static const String aiPlanner = '/ai-planner';
   static const String profile = '/profile';
+  static const String editProfile = '/edit-profile'; // Added
   static const String calendar = '/calendar';
   static const String notes = '/notes';
+  static const String noteEditor = '/note-editor'; // Added
   static const String achievements = '/achievements';
   static const String statistics = '/statistics';
   static const String settings = '/settings';
@@ -115,12 +120,42 @@ class AppRouter {
         );
 
       case AppRoutes.quiz:
-        final subjectId = settings.arguments as String?;
-        return AppSlideRightRoute(page: QuizScreen(subjectId: subjectId ?? ''));
+        final args = settings.arguments;
+        String? subjectId;
+        String? studySetId;
+
+        if (args is Map<String, dynamic>) {
+          subjectId = args['subjectId'];
+          studySetId = args['studySetId'];
+        } else if (args is String) {
+          subjectId = args;
+        }
+
+        return AppSlideRightRoute(
+          page: QuizScreen(subjectId: subjectId, studySetId: studySetId),
+        );
 
       case AppRoutes.quizSetup:
-        final subjectId = settings.arguments as String?;
-        return AppSlideRightRoute(page: QuizSetupScreen(subjectId: subjectId));
+        final args = settings.arguments;
+        String? subjectId;
+        String? studySetId;
+        String? topic;
+
+        if (args is Map<String, dynamic>) {
+          subjectId = args['subjectId'];
+          studySetId = args['studySetId'];
+          topic = args['topic'];
+        } else if (args is String) {
+          subjectId = args;
+        }
+
+        return AppSlideRightRoute(
+          page: QuizSetupScreen(
+            subjectId: subjectId,
+            studySetId: studySetId,
+            topic: topic,
+          ),
+        );
 
       case AppRoutes.focusSession:
         final args = settings.arguments as Map<String, dynamic>?;
@@ -149,14 +184,21 @@ class AppRouter {
       case AppRoutes.profile:
         return AppSlideRightRoute(page: const ProfileScreen());
 
+      case AppRoutes.editProfile:
+        return AppSlideRightRoute(page: const PreferencesScreen());
+
       case AppRoutes.calendar:
         return AppSlideRightRoute(page: const CalendarScreen());
 
       case AppRoutes.notes:
         return AppSlideRightRoute(page: const NotesScreen());
 
+      case AppRoutes.noteEditor:
+        final note = settings.arguments as Note?;
+        return AppSlideRightRoute(page: NoteEditorScreen(note: note));
+
       case AppRoutes.achievements:
-        return AppSlideRightRoute(page: const AchievementsScreen());
+        return AppSlideRightRoute(page: const AchievementsLoadingScreen());
 
       case AppRoutes.statistics:
         return AppSlideRightRoute(page: const StatisticsScreen());
@@ -185,6 +227,7 @@ class AppRouter {
             studySetCategory: args?['studySetCategory'] ?? 'General',
             studySetDescription: args?['studySetDescription'] ?? '',
             isPrivate: args?['isPrivate'] ?? true,
+            subjectId: args?['subjectId'], // Pass subjectId
           ),
         );
 

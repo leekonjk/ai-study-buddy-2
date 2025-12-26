@@ -13,4 +13,5 @@ abstract class NoteRepository {
   Future<Result<void>> updateNote(Note note);
   Future<Result<void>> deleteNote(String id);
   Stream<List<Note>> watchNotes(String userId);
+  Future<Result<int>> getNoteCount(String userId);
 }

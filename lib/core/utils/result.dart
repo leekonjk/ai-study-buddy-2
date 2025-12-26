@@ -12,7 +12,7 @@ sealed class Result<T> {
   bool get isSuccess => this is Success<T>;
 
   /// Returns true if this is a failure result.
-  bool get isFailure => this is Failure;
+  bool get isFailure => this is Err<T>;
 
   /// Folds the result into a single value.
   R fold<R>({

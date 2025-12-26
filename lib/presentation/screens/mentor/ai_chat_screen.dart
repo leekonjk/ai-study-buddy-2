@@ -6,6 +6,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
+import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart'; // Added
+import 'package:studnet_ai_buddy/domain/entities/academic_profile.dart'; // Added
+import 'package:studnet_ai_buddy/core/utils/result.dart'; // Added
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/chat_bubble.dart';
@@ -98,7 +101,24 @@ class _AIChatScreenState extends State<AIChatScreen> {
     // Get AI response
     try {
       final aiService = getIt<AIMentorService>();
-      final response = await aiService.answerQuery(text);
+
+      // Fetch profile context if possible (basic implementation for now)
+      // Ideally this should be in a ViewModel or cached
+      AcademicProfile? profile;
+      try {
+        final academicRepo = getIt<AcademicRepository>();
+        final result = await academicRepo.getAcademicProfile();
+        if (result is Success) {
+          profile = (result as Success<AcademicProfile?>).value;
+        }
+      } catch (_) {
+        // Ignore profile fetch error
+      }
+
+      final response = await aiService.answerQuery(
+        query: text,
+        profile: profile,
+      );
 
       if (mounted) {
         setState(() {

@@ -7,6 +7,9 @@ import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
+import 'package:studnet_ai_buddy/di/service_locator.dart'; // Added
+import 'package:studnet_ai_buddy/domain/entities/study_set.dart'; // Added
+import 'package:studnet_ai_buddy/domain/repositories/study_set_repository.dart'; // Added
 
 /// Explore screen for discovering study content.
 class ExploreScreen extends StatelessWidget {
@@ -70,7 +73,7 @@ class ExploreScreen extends StatelessWidget {
             // Categories section
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
                 children: [
                   const Text(
                     'Categories',
@@ -215,60 +218,129 @@ class ExploreScreen extends StatelessWidget {
   }
 
   Widget _buildPopularSets() {
-    // Demo data - in production, fetch from repository
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: 5,
-      itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: StudyBuddyDecorations.cardDecoration,
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: StudyBuddyColors.primary.withValues(alpha: 0.1),
-                  borderRadius: StudyBuddyDecorations.borderRadiusM,
+    return FutureBuilder(
+      future: getIt<StudySetRepository>().getAllStudySets(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        List<StudySet> sets = [];
+        if (snapshot.hasData) {
+          snapshot.data!.fold(
+            onSuccess: (list) => sets = list,
+            onFailure: (_) => sets = [],
+          );
+        }
+
+        if (sets.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: StudyBuddyColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.explore_off_rounded,
+                    size: 48,
+                    color: StudyBuddyColors.textSecondary,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.menu_book_rounded,
-                  color: StudyBuddyColors.primary,
+                const SizedBox(height: 16),
+                const Text(
+                  'No public study sets found',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: StudyBuddyColors.textPrimary,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 4),
+                const Text(
+                  'Be the first to share one!',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: StudyBuddyColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: sets.length,
+          itemBuilder: (context, index) {
+            final set = sets[index];
+            return InkWell(
+              onTap: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.studySetDetail,
+                  arguments: {
+                    'studySetId': set.id,
+                    'title': set.title,
+                    'category': set.category,
+                  },
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: StudyBuddyDecorations.cardDecoration,
+                child: Row(
                   children: [
-                    Text(
-                      'Popular Study Set ${index + 1}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: StudyBuddyColors.textPrimary,
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: StudyBuddyColors.primary.withValues(alpha: 0.1),
+                        borderRadius: StudyBuddyDecorations.borderRadiusM,
+                      ),
+                      child: const Icon(
+                        Icons.menu_book_rounded,
+                        color: StudyBuddyColors.primary,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${10 + index * 5} topics • ${20 + index * 10} flashcards',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: StudyBuddyColors.textSecondary,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            set.title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: StudyBuddyColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${set.flashcardCount} flashcards • ${set.category}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: StudyBuddyColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: StudyBuddyColors.textSecondary,
                     ),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: StudyBuddyColors.textSecondary,
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

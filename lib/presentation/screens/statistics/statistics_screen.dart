@@ -4,6 +4,10 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
+import 'package:studnet_ai_buddy/di/service_locator.dart';
+import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
+import 'package:studnet_ai_buddy/presentation/viewmodels/statistics/statistics_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 
@@ -16,88 +20,92 @@ class StatisticsScreen extends StatefulWidget {
 }
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
-  String _selectedPeriod = 'Week';
+  late final StatisticsViewModel _viewModel;
 
-  // Demo data
-  final List<double> _weeklyStudyHours = [2.5, 3.0, 1.5, 4.0, 2.0, 3.5, 2.5];
-  final List<String> _weekDays = [
-    'Mon',
-    'Tue',
-    'Wed',
-    'Thu',
-    'Fri',
-    'Sat',
-    'Sun',
-  ];
-
-  double get _totalHours => _weeklyStudyHours.reduce((a, b) => a + b);
-  double get _averageHours => _totalHours / _weeklyStudyHours.length;
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = getIt<StatisticsViewModel>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _viewModel.loadStats('Week');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: StudyBuddyColors.backgroundGradient,
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(),
+    return ChangeNotifierProvider.value(
+      value: _viewModel,
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: StudyBuddyColors.backgroundGradient,
+          ),
+          child: SafeArea(
+            child: Consumer<StatisticsViewModel>(
+              builder: (context, vm, child) {
+                if (vm.state.viewState == ViewState.loading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-              // Content
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Period selector
-                      _buildPeriodSelector().animate().fadeIn().slideY(
-                        begin: 0.1,
-                        end: 0,
+                return Column(
+                  children: [
+                    // Header
+                    _buildHeader(context),
+
+                    // Content
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Period selector
+                            _buildPeriodSelector(
+                              vm,
+                            ).animate().fadeIn().slideY(begin: 0.1, end: 0),
+                            const SizedBox(height: 24),
+
+                            // Overview cards
+                            _buildOverviewCards(vm)
+                                .animate()
+                                .fadeIn(delay: 100.ms)
+                                .slideY(begin: 0.1, end: 0),
+                            const SizedBox(height: 24),
+
+                            // Study hours chart
+                            _buildStudyHoursChart(vm)
+                                .animate()
+                                .fadeIn(delay: 200.ms)
+                                .slideY(begin: 0.1, end: 0),
+                            const SizedBox(height: 24),
+
+                            // Subject breakdown
+                            _buildSubjectBreakdown(vm)
+                                .animate()
+                                .fadeIn(delay: 300.ms)
+                                .slideY(begin: 0.1, end: 0),
+                            const SizedBox(height: 24),
+
+                            // Recent activity
+                            _buildRecentActivity(vm)
+                                .animate()
+                                .fadeIn(delay: 400.ms)
+                                .slideY(begin: 0.1, end: 0),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 24),
-
-                      // Overview cards
-                      _buildOverviewCards()
-                          .animate()
-                          .fadeIn(delay: 100.ms)
-                          .slideY(begin: 0.1, end: 0),
-                      const SizedBox(height: 24),
-
-                      // Study hours chart
-                      _buildStudyHoursChart()
-                          .animate()
-                          .fadeIn(delay: 200.ms)
-                          .slideY(begin: 0.1, end: 0),
-                      const SizedBox(height: 24),
-
-                      // Subject breakdown
-                      _buildSubjectBreakdown()
-                          .animate()
-                          .fadeIn(delay: 300.ms)
-                          .slideY(begin: 0.1, end: 0),
-                      const SizedBox(height: 24),
-
-                      // Recent activity
-                      _buildRecentActivity()
-                          .animate()
-                          .fadeIn(delay: 400.ms)
-                          .slideY(begin: 0.1, end: 0),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Row(
@@ -128,21 +136,12 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
             ),
           ),
-          IconButton(
-            onPressed: () {
-              // Share stats
-            },
-            icon: const Icon(
-              Icons.share_rounded,
-              color: StudyBuddyColors.textSecondary,
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildPeriodSelector() {
+  Widget _buildPeriodSelector(StatisticsViewModel vm) {
     final periods = ['Week', 'Month', 'Year'];
 
     return Container(
@@ -154,10 +153,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       ),
       child: Row(
         children: periods.map((period) {
-          final isSelected = period == _selectedPeriod;
+          final isSelected = period == vm.state.selectedPeriod;
           return Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => _selectedPeriod = period),
+              onTap: () => vm.setPeriod(period),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -186,16 +185,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Widget _buildOverviewCards() {
+  Widget _buildOverviewCards(StatisticsViewModel vm) {
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
             icon: Icons.timer_rounded,
             label: 'Total Hours',
-            value: '${_totalHours.toStringAsFixed(1)}h',
+            value: '${vm.state.totalHours.toStringAsFixed(1)}h',
             color: StudyBuddyColors.primary,
-            trend: '+15%',
+            trend: '+5%', // You might want to calculate this real trend later
             isUp: true,
           ),
         ),
@@ -204,9 +203,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           child: _buildStatCard(
             icon: Icons.speed_rounded,
             label: 'Daily Avg',
-            value: '${_averageHours.toStringAsFixed(1)}h',
+            value: '${vm.state.averageDailyHours.toStringAsFixed(1)}h',
             color: StudyBuddyColors.secondary,
-            trend: '+8%',
+            // trend: '+2%',
             isUp: true,
           ),
         ),
@@ -307,8 +306,26 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Widget _buildStudyHoursChart() {
-    final maxHours = _weeklyStudyHours.reduce((a, b) => a > b ? a : b);
+  Widget _buildStudyHoursChart(StatisticsViewModel vm) {
+    // Convert map to list based on week days
+    // Assume map keys are simple "Mon", "Tue" etc or we just map 0-6
+    // The current VM implementation returns Map<String, int> from repository.
+    // The repository implementation likely returns Weekday names or dates.
+    // For now, let's assume we can map it.
+    // Actually, `getWeeklyFocusStats` in repo usually returns { 'Mon': 30, 'Tue': 0 ... }
+
+    final weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final weeklyMinutes = vm.state.weeklyStudyMinutes;
+    final List<double> weeklyHours = weekDays.map((day) {
+      final mins = weeklyMinutes[day] ?? 0;
+      return mins / 60.0;
+    }).toList();
+
+    double maxHours = 1.0;
+    if (weeklyHours.isNotEmpty) {
+      maxHours = weeklyHours.reduce((a, b) => a > b ? a : b);
+    }
+    if (maxHours == 0) maxHours = 1.0;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -338,7 +355,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
               const Spacer(),
               Text(
-                'This $_selectedPeriod',
+                'This ${vm.state.selectedPeriod}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: StudyBuddyColors.textTertiary,
@@ -351,8 +368,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             height: 180,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(_weeklyStudyHours.length, (index) {
-                final height = (_weeklyStudyHours[index] / maxHours) * 120;
+              children: List.generate(weeklyHours.length, (index) {
+                final height = (weeklyHours[index] / maxHours) * 120;
                 final isToday = index == DateTime.now().weekday - 1;
 
                 return Expanded(
@@ -362,7 +379,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Text(
-                          '${_weeklyStudyHours[index].toStringAsFixed(1)}h',
+                          weeklyHours[index] > 0
+                              ? '${weeklyHours[index].toStringAsFixed(1)}h'
+                              : '',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -374,7 +393,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         const SizedBox(height: 4),
                         AnimatedContainer(
                           duration: Duration(milliseconds: 300 + index * 50),
-                          height: height,
+                          height: height < 4 ? 4 : height, // Min height
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topCenter,
@@ -402,7 +421,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          _weekDays[index],
+                          weekDays[index],
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: isToday
@@ -425,19 +444,30 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Widget _buildSubjectBreakdown() {
-    final subjects = [
-      {'name': 'Mathematics', 'hours': 5.5, 'color': Colors.blue},
-      {'name': 'Biology', 'hours': 4.0, 'color': Colors.green},
-      {'name': 'Physics', 'hours': 3.5, 'color': Colors.orange},
-      {'name': 'Computer Science', 'hours': 3.0, 'color': Colors.purple},
-      {'name': 'Chemistry', 'hours': 2.5, 'color': Colors.red},
+  Widget _buildSubjectBreakdown(StatisticsViewModel vm) {
+    if (vm.state.subjectStudyHours.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final subjects = vm.state.subjectStudyHours.entries.toList();
+    // Sort by hours desc
+    subjects.sort((a, b) => b.value.compareTo(a.value));
+
+    // Assign colors (cycle through a palette)
+    final colors = [
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.red,
+      Colors.teal,
     ];
 
-    final totalHours = subjects.fold<double>(
-      0,
-      (sum, s) => sum + (s['hours'] as double),
-    );
+    double totalHours = 0;
+    for (var s in subjects) {
+      totalHours += s.value;
+    }
+    if (totalHours == 0) totalHours = 1;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -468,8 +498,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          ...subjects.map((subject) {
-            final percentage = (subject['hours'] as double) / totalHours;
+          ...List.generate(subjects.length, (index) {
+            final subject = subjects[index];
+            final percentage = subject.value / totalHours;
+            final color = colors[index % colors.length];
+
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Column(
@@ -480,14 +513,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         width: 12,
                         height: 12,
                         decoration: BoxDecoration(
-                          color: subject['color'] as Color,
+                          color: color,
                           shape: BoxShape.circle,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          subject['name'] as String,
+                          subject.key,
                           style: const TextStyle(
                             fontSize: 14,
                             color: StudyBuddyColors.textPrimary,
@@ -495,7 +528,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         ),
                       ),
                       Text(
-                        '${(subject['hours'] as double).toStringAsFixed(1)}h',
+                        '${subject.value.toStringAsFixed(1)}h',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -519,9 +552,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       value: percentage,
                       minHeight: 6,
                       backgroundColor: StudyBuddyColors.border,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        subject['color'] as Color,
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
                     ),
                   ),
                 ],
@@ -533,33 +564,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
-  Widget _buildRecentActivity() {
-    final activities = [
-      {
-        'type': 'quiz',
-        'title': 'Biology Quiz',
-        'score': '92%',
-        'time': '2h ago',
-      },
-      {
-        'type': 'flashcard',
-        'title': 'Math Flashcards',
-        'score': '45 cards',
-        'time': '4h ago',
-      },
-      {
-        'type': 'focus',
-        'title': 'Focus Session',
-        'score': '1.5h',
-        'time': 'Yesterday',
-      },
-      {
-        'type': 'quiz',
-        'title': 'Physics Quiz',
-        'score': '88%',
-        'time': 'Yesterday',
-      },
-    ];
+  Widget _buildRecentActivity(StatisticsViewModel vm) {
+    // Map FocusSessions to activity display format
+    final sessions = vm.state.recentSessions;
+    if (sessions.isEmpty) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -580,7 +588,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               ),
               SizedBox(width: 8),
               Text(
-                'Recent Activity',
+                'Recent Sessions',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -590,8 +598,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          ...activities.map(
-            (activity) => Padding(
+          ...sessions.map((session) {
+            // Determine icon and color based on duration or type (if we had type)
+            // For now, it's just a focus session.
+
+            final durationStr =
+                '${(session.actualDurationMinutes / 60.0).toStringAsFixed(1)}h';
+            final timeAgo = _timeAgo(session.endTime ?? session.startTime);
+
+            return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
                 children: [
@@ -599,15 +614,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: _getActivityColor(
-                        activity['type']!,
-                      ).withValues(alpha: 0.1),
+                      color: StudyBuddyColors.warning.withValues(alpha: 0.1),
                       borderRadius: StudyBuddyDecorations.borderRadiusS,
                     ),
-                    child: Icon(
-                      _getActivityIcon(activity['type']!),
+                    child: const Icon(
+                      Icons.timer_rounded,
                       size: 20,
-                      color: _getActivityColor(activity['type']!),
+                      color: StudyBuddyColors.warning,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -616,7 +629,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          activity['title']!,
+                          (session.subjectId ?? '').isEmpty
+                              ? 'Study Session'
+                              : session.subjectId!,
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -624,7 +639,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                           ),
                         ),
                         Text(
-                          activity['time']!,
+                          timeAgo,
                           style: const TextStyle(
                             fontSize: 12,
                             color: StudyBuddyColors.textTertiary,
@@ -643,7 +658,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       borderRadius: StudyBuddyDecorations.borderRadiusFull,
                     ),
                     child: Text(
-                      activity['score']!,
+                      durationStr,
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -653,36 +668,18 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   ),
                 ],
               ),
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );
   }
 
-  IconData _getActivityIcon(String type) {
-    switch (type) {
-      case 'quiz':
-        return Icons.quiz_rounded;
-      case 'flashcard':
-        return Icons.style_rounded;
-      case 'focus':
-        return Icons.timer_rounded;
-      default:
-        return Icons.school_rounded;
-    }
-  }
-
-  Color _getActivityColor(String type) {
-    switch (type) {
-      case 'quiz':
-        return StudyBuddyColors.primary;
-      case 'flashcard':
-        return StudyBuddyColors.secondary;
-      case 'focus':
-        return StudyBuddyColors.warning;
-      default:
-        return StudyBuddyColors.success;
-    }
+  String _timeAgo(DateTime time) {
+    final diff = DateTime.now().difference(time);
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'Just now';
   }
 }

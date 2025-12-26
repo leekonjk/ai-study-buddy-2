@@ -1,6 +1,6 @@
 /// AI Mentor Service.
 /// Generates advisory insights and explanations for the student.
-/// 
+///
 /// Layer: Domain
 /// Responsibility: Produce explainable AI guidance and encouragement.
 /// Inputs: Academic state, risk assessments, progress data.
@@ -11,6 +11,9 @@ import 'package:studnet_ai_buddy/domain/entities/ai_insight.dart';
 import 'package:studnet_ai_buddy/domain/entities/knowledge_level.dart';
 import 'package:studnet_ai_buddy/domain/entities/risk_assessment.dart';
 import 'package:studnet_ai_buddy/domain/entities/study_plan.dart';
+import 'package:studnet_ai_buddy/domain/entities/study_task.dart'; // Added
+import 'package:studnet_ai_buddy/domain/entities/academic_profile.dart'; // Added
+import 'package:studnet_ai_buddy/domain/entities/subject.dart';
 
 abstract class AIMentorService {
   /// Generates daily insights based on current academic state.
@@ -18,6 +21,13 @@ abstract class AIMentorService {
     required List<KnowledgeLevel> knowledgeLevels,
     required List<RiskAssessment> riskAssessments,
     required StudyPlan? currentPlan,
+    required AcademicProfile? profile, // Added
+  });
+
+  /// Generates a personalized study plan.
+  Future<List<StudyTask>> generateStudyPlan({
+    required AcademicProfile profile,
+    required List<Subject> subjects,
   });
 
   /// Generates encouragement after task completion.
@@ -27,9 +37,7 @@ abstract class AIMentorService {
   });
 
   /// Generates warning insight for high-risk subjects.
-  Future<AIInsight> generateRiskWarning({
-    required RiskAssessment assessment,
-  });
+  Future<AIInsight> generateRiskWarning({required RiskAssessment assessment});
 
   /// Answers student query about their academic progress.
   Future<String> explainProgress({
@@ -39,7 +47,10 @@ abstract class AIMentorService {
   });
 
   /// Answers a general query from the user in chat.
-  Future<String> answerQuery(String query);
+  Future<String> answerQuery({
+    required String query,
+    AcademicProfile? profile, // Added
+  });
 
   /// Generates flashcards from topics.
   Future<List<Map<String, dynamic>>> generateFlashcardsFromTopics({
@@ -59,5 +70,13 @@ abstract class AIMentorService {
   Future<String> createStudySet({
     required String name,
     required String category,
+  });
+
+  /// Generates quiz questions using AI.
+  Future<List<Map<String, dynamic>>> generateQuizQuestions({
+    required String subject,
+    required String topic,
+    required String difficulty,
+    required int count,
   });
 }

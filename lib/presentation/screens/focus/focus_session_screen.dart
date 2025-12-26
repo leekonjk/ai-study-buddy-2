@@ -5,6 +5,7 @@ import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 
 import 'package:studnet_ai_buddy/presentation/viewmodels/focus/focus_session_viewmodel.dart';
+import 'package:studnet_ai_buddy/presentation/screens/focus/session_setup_dialog.dart';
 
 /// Focus session screen with timer and controls.
 class FocusSessionScreen extends StatefulWidget {
@@ -25,17 +26,38 @@ class _FocusSessionScreenState extends State<FocusSessionScreen> {
     super.initState();
     _viewModel = getIt<FocusSessionViewModel>();
 
-    // Initialize session when screen opens
+    // Show setup dialog instead of auto-starting
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_viewModel.state.hasActiveSession) {
-        // Start default 25 min session if none active
-        _viewModel.startSession(
-          durationMinutes: 25,
-          taskId: widget.taskId,
-          subjectId: widget.subjectId,
-        );
+        _showSessionSetupDialog();
       }
     });
+  }
+
+  /// Shows the session setup dialog and starts session with user's choices
+  Future<void> _showSessionSetupDialog() async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => SessionSetupDialog(
+        preselectedSubjectId: widget.subjectId,
+        preselectedTaskId: widget.taskId,
+      ),
+    );
+
+    if (result != null && mounted) {
+      // Start session with user's configuration
+      _viewModel.startSession(
+        durationMinutes: result['minutes'] as int,
+        taskId: result['taskId'] as String?,
+        subjectId: result['subjectId'] as String?,
+      );
+    } else {
+      // User cancelled - go back
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    }
   }
 
   @override

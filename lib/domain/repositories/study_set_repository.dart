@@ -3,33 +3,7 @@
 library;
 
 import 'package:studnet_ai_buddy/core/utils/result.dart';
-
-/// Study set entity.
-class StudySet {
-  final String id;
-  final String title;
-  final String category;
-  final String studentId;
-  final bool isPrivate;
-  final int topicCount;
-  final int flashcardCount;
-  final int fileCount;
-  final DateTime createdAt;
-  final DateTime lastUpdated;
-
-  const StudySet({
-    required this.id,
-    required this.title,
-    required this.category,
-    required this.studentId,
-    required this.isPrivate,
-    this.topicCount = 0,
-    this.flashcardCount = 0,
-    this.fileCount = 0,
-    required this.createdAt,
-    required this.lastUpdated,
-  });
-}
+import 'package:studnet_ai_buddy/domain/entities/study_set.dart';
 
 /// Study set repository interface.
 abstract class StudySetRepository {
@@ -49,6 +23,7 @@ abstract class StudySetRepository {
   Future<Result<StudySet>> createStudySet({
     required String title,
     required String category,
+    String? subjectId,
     bool isPrivate = true,
   });
 
@@ -70,4 +45,3 @@ abstract class StudySetRepository {
   /// Get content counts for study set.
   Future<Result<Map<String, int>>> getContentCounts(String studySetId);
 }
-

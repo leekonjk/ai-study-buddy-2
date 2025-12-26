@@ -1,11 +1,11 @@
 /// Onboarding ViewModel.
 /// Manages state for the onboarding flow.
-/// 
+///
 /// Layer: Presentation
 /// Responsibility: Handle onboarding steps, academic profile creation.
 /// Inputs: User input (name, program, semester, subjects).
 /// Outputs: Onboarding state, navigation triggers.
-/// 
+///
 /// Dependencies: AcademicRepository (injected via constructor)
 library;
 
@@ -103,9 +103,8 @@ class OnboardingState {
 class OnboardingViewModel extends BaseViewModel {
   final AcademicRepository _academicRepository;
 
-  OnboardingViewModel({
-    required AcademicRepository academicRepository,
-  }) : _academicRepository = academicRepository;
+  OnboardingViewModel({required AcademicRepository academicRepository})
+    : _academicRepository = academicRepository;
 
   OnboardingState _state = const OnboardingState();
   OnboardingState get state => _state;
@@ -203,10 +202,7 @@ class OnboardingViewModel extends BaseViewModel {
   /// Jumps to a specific step.
   void goToStep(int step) {
     if (step >= 0 && step < _state.totalSteps) {
-      _state = _state.copyWith(
-        currentStep: step,
-        errorMessage: null,
-      );
+      _state = _state.copyWith(currentStep: step, errorMessage: null);
       notifyListeners();
     }
   }
@@ -272,6 +268,7 @@ class OnboardingViewModel extends BaseViewModel {
     final profile = AcademicProfile(
       id: '', // Will be set by repository based on auth
       studentName: _state.studentName,
+      universityName: '', // Not collected in this VM flow yet
       programName: _state.selectedProgram ?? '',
       currentSemester: _state.selectedSemester ?? 1,
       enrolledSubjectIds: _state.selectedSubjectIds,

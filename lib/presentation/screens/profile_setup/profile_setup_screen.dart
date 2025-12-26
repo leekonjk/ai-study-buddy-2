@@ -53,6 +53,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final profile = AcademicProfile(
       id: '', // Will be set by repository
       studentName: _nameController.text.trim(),
+      universityName: _universityController.text.trim(), // Added
       programName: _majorController.text.trim(),
       currentSemester: 1,
       enrolledSubjectIds: [],

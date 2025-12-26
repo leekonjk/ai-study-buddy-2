@@ -29,6 +29,11 @@ class FlashcardRepositoryImpl implements FlashcardRepository {
     String? imageUrl,
   }) async {
     try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        return const Err(NetworkFailure(message: 'User not logged in'));
+      }
+
       final id = _firestore.collection(_collection).doc().id;
       final now = DateTime.now();
 
@@ -38,6 +43,7 @@ class FlashcardRepositoryImpl implements FlashcardRepository {
         term: term,
         definition: definition,
         imageUrl: imageUrl,
+        creatorId: userId, // Set from auth
         createdAt: now,
         lastUpdated: now,
       );
@@ -58,15 +64,24 @@ class FlashcardRepositoryImpl implements FlashcardRepository {
     List<Flashcard> flashcards,
   ) async {
     try {
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        return const Err(NetworkFailure(message: 'User not logged in'));
+      }
+
       final batch = _firestore.batch();
+      final List<Flashcard> batchCards = [];
 
       for (final card in flashcards) {
         final docRef = _firestore.collection(_collection).doc(card.id);
-        batch.set(docRef, card.toJson());
+        // Ensure creatorId is set correctly, even if passed incorrectly
+        final cardWithAuth = card.copyWith(creatorId: userId);
+        batch.set(docRef, cardWithAuth.toJson());
+        batchCards.add(cardWithAuth);
       }
 
       await batch.commit();
-      return Success(flashcards);
+      return Success(batchCards);
     } on FirebaseException catch (e) {
       return Err(
         NetworkFailure(
@@ -87,12 +102,17 @@ class FlashcardRepositoryImpl implements FlashcardRepository {
       final snapshot = await _firestore
           .collection(_collection)
           .where('studySetId', isEqualTo: studySetId)
-          .orderBy('createdAt')
+          // Removed orderBy to avoid index requirement "FAILED_PRECONDITION"
+          // We will sort in memory below
           .get();
 
       final cards = snapshot.docs
           .map((doc) => Flashcard.fromJson(doc.data()))
           .toList();
+
+      // Sort in memory
+      cards.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
       return Success(cards);
     } on FirebaseException catch (e) {
       return Err(

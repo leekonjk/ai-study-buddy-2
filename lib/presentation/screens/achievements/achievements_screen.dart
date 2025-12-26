@@ -7,122 +7,15 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 
-/// Achievement data model.
-class Achievement {
-  final String id;
-  final String title;
-  final String description;
-  final IconData icon;
-  final Color color;
-  final bool isUnlocked;
-  final double progress;
-  final String? unlockedDate;
-
-  const Achievement({
-    required this.id,
-    required this.title,
-    required this.description,
-    required this.icon,
-    required this.color,
-    this.isUnlocked = false,
-    this.progress = 0.0,
-    this.unlockedDate,
-  });
-}
+import 'package:studnet_ai_buddy/domain/entities/achievement.dart'; // Added
 
 /// Achievements and badges screen.
 class AchievementsScreen extends StatelessWidget {
-  const AchievementsScreen({super.key});
+  final List<Achievement> achievements;
 
-  static const List<Achievement> _achievements = [
-    // Unlocked
-    Achievement(
-      id: '1',
-      title: 'First Steps',
-      description: 'Complete your first study session',
-      icon: Icons.emoji_events_rounded,
-      color: Colors.amber,
-      isUnlocked: true,
-      progress: 1.0,
-      unlockedDate: 'Dec 20, 2024',
-    ),
-    Achievement(
-      id: '2',
-      title: 'Quiz Master',
-      description: 'Score 100% on any quiz',
-      icon: Icons.star_rounded,
-      color: Colors.purple,
-      isUnlocked: true,
-      progress: 1.0,
-      unlockedDate: 'Dec 22, 2024',
-    ),
-    Achievement(
-      id: '3',
-      title: 'Week Warrior',
-      description: 'Maintain a 7-day study streak',
-      icon: Icons.local_fire_department_rounded,
-      color: Colors.orange,
-      isUnlocked: true,
-      progress: 1.0,
-      unlockedDate: 'Dec 24, 2024',
-    ),
-    // In progress
-    Achievement(
-      id: '4',
-      title: 'Flashcard Pro',
-      description: 'Create 50 flashcards',
-      icon: Icons.style_rounded,
-      color: Colors.blue,
-      progress: 0.68,
-    ),
-    Achievement(
-      id: '5',
-      title: 'Night Owl',
-      description: 'Study for 10 hours after 10 PM',
-      icon: Icons.nightlight_rounded,
-      color: Colors.indigo,
-      progress: 0.45,
-    ),
-    Achievement(
-      id: '6',
-      title: 'Knowledge Seeker',
-      description: 'Complete 100 study sessions',
-      icon: Icons.school_rounded,
-      color: Colors.teal,
-      progress: 0.32,
-    ),
-    // Locked
-    Achievement(
-      id: '7',
-      title: 'Month Champion',
-      description: 'Maintain a 30-day study streak',
-      icon: Icons.workspace_premium_rounded,
-      color: Colors.red,
-    ),
-    Achievement(
-      id: '8',
-      title: 'Speed Demon',
-      description: 'Complete a quiz in under 2 minutes',
-      icon: Icons.speed_rounded,
-      color: Colors.green,
-    ),
-    Achievement(
-      id: '9',
-      title: 'Social Butterfly',
-      description: 'Share 10 study sets with friends',
-      icon: Icons.share_rounded,
-      color: Colors.pink,
-    ),
-    Achievement(
-      id: '10',
-      title: 'Ultimate Scholar',
-      description: 'Unlock all other achievements',
-      icon: Icons.military_tech_rounded,
-      color: Colors.amber,
-    ),
-  ];
+  const AchievementsScreen({super.key, required this.achievements});
 
-  int get _unlockedCount => _achievements.where((a) => a.isUnlocked).length;
+  int get _unlockedCount => achievements.where((a) => a.isUnlocked).length;
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +45,7 @@ class AchievementsScreen extends StatelessWidget {
                         'Unlocked',
                         Icons.lock_open_rounded,
                         StudyBuddyColors.success,
-                        _achievements.where((a) => a.isUnlocked).toList(),
+                        achievements.where((a) => a.isUnlocked).toList(),
                       ),
                       const SizedBox(height: 24),
 
@@ -161,7 +54,7 @@ class AchievementsScreen extends StatelessWidget {
                         'In Progress',
                         Icons.trending_up_rounded,
                         StudyBuddyColors.warning,
-                        _achievements
+                        achievements
                             .where((a) => !a.isUnlocked && a.progress > 0)
                             .toList(),
                       ),
@@ -172,7 +65,7 @@ class AchievementsScreen extends StatelessWidget {
                         'Locked',
                         Icons.lock_rounded,
                         StudyBuddyColors.textTertiary,
-                        _achievements
+                        achievements
                             .where((a) => !a.isUnlocked && a.progress == 0)
                             .toList(),
                       ),
@@ -260,7 +153,7 @@ class AchievementsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$_unlockedCount / ${_achievements.length}',
+                  '$_unlockedCount / ${achievements.length}',
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -284,14 +177,16 @@ class AchievementsScreen extends StatelessWidget {
             child: Stack(
               children: [
                 CircularProgressIndicator(
-                  value: _unlockedCount / _achievements.length,
+                  value: achievements.isEmpty
+                      ? 0
+                      : _unlockedCount / achievements.length,
                   strokeWidth: 5,
                   backgroundColor: StudyBuddyColors.border,
                   valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
                 ),
                 Center(
                   child: Text(
-                    '${(_unlockedCount / _achievements.length * 100).toInt()}%',
+                    '${achievements.isEmpty ? 0 : (_unlockedCount / achievements.length * 100).toInt()}%',
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -363,6 +258,8 @@ class AchievementsScreen extends StatelessWidget {
 
   Widget _buildAchievementCard(Achievement achievement) {
     final isLocked = !achievement.isUnlocked && achievement.progress == 0;
+    final color = _getColor(achievement);
+    final icon = _getIcon(achievement);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -372,7 +269,7 @@ class AchievementsScreen extends StatelessWidget {
         borderRadius: StudyBuddyDecorations.borderRadiusL,
         border: Border.all(
           color: achievement.isUnlocked
-              ? achievement.color.withValues(alpha: 0.3)
+              ? color.withValues(alpha: 0.3)
               : StudyBuddyColors.border,
         ),
       ),
@@ -385,15 +282,13 @@ class AchievementsScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: isLocked
                   ? StudyBuddyColors.border.withValues(alpha: 0.3)
-                  : achievement.color.withValues(alpha: 0.15),
+                  : color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              achievement.icon,
+              icon,
               size: 28,
-              color: isLocked
-                  ? StudyBuddyColors.textTertiary
-                  : achievement.color,
+              color: isLocked ? StudyBuddyColors.textTertiary : color,
             ),
           ),
           const SizedBox(width: 16),
@@ -433,9 +328,7 @@ class AchievementsScreen extends StatelessWidget {
                             value: achievement.progress,
                             minHeight: 6,
                             backgroundColor: StudyBuddyColors.border,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              achievement.color,
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(color),
                           ),
                         ),
                       ),
@@ -445,18 +338,18 @@ class AchievementsScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: achievement.color,
+                          color: color,
                         ),
                       ),
                     ],
                   ),
                 ],
                 if (achievement.isUnlocked &&
-                    achievement.unlockedDate != null) ...[
+                    achievement.unlockedAt != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Unlocked ${achievement.unlockedDate}',
-                    style: TextStyle(fontSize: 11, color: achievement.color),
+                    'Unlocked ${_formatDate(achievement.unlockedAt!)}',
+                    style: TextStyle(fontSize: 11, color: color),
                   ),
                 ],
               ],
@@ -467,17 +360,13 @@ class AchievementsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: achievement.color.withValues(alpha: 0.2),
+                color: color.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.check_rounded,
-                size: 16,
-                color: achievement.color,
-              ),
+              child: Icon(Icons.check_rounded, size: 16, color: color),
             )
           else if (isLocked)
-            Icon(
+            const Icon(
               Icons.lock_rounded,
               size: 20,
               color: StudyBuddyColors.textTertiary,
@@ -485,5 +374,43 @@ class AchievementsScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Color _getColor(Achievement achievement) {
+    switch (achievement.id) {
+      case 'first_steps':
+        return Colors.amber;
+      case 'note_taker':
+        return Colors.blue;
+      case 'dedicated_scholar':
+        return Colors.purple;
+      case 'streak_master':
+        return Colors.orange;
+      case 'weekend_warrior':
+        return Colors.teal;
+      default:
+        return StudyBuddyColors.primary;
+    }
+  }
+
+  IconData _getIcon(Achievement achievement) {
+    switch (achievement.id) {
+      case 'first_steps':
+        return Icons.emoji_events_rounded;
+      case 'note_taker':
+        return Icons.note_alt_rounded;
+      case 'dedicated_scholar':
+        return Icons.school_rounded;
+      case 'streak_master':
+        return Icons.local_fire_department_rounded;
+      case 'weekend_warrior':
+        return Icons.weekend_rounded;
+      default:
+        return Icons.star_rounded;
+    }
   }
 }

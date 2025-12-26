@@ -291,8 +291,8 @@ class AcademicRepositoryImpl implements AcademicRepository {
 
     return AcademicProfile(
       id: data['studentId'] as String? ?? doc.id,
-      studentName:
-          data['studentName'] as String? ?? '', // ✅ FIX: Read from Firestore
+      studentName: data['studentName'] as String? ?? '',
+      universityName: data['institution'] as String? ?? '', // Read institution
       programName: data['degreeProgram'] as String? ?? '',
       currentSemester: data['semester'] as int? ?? 1,
       enrolledSubjectIds: enrolledSubjectIds,

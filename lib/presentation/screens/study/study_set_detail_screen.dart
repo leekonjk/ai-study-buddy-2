@@ -7,19 +7,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
-
-/// Demo flashcard data for display.
-class DemoFlashcard {
-  final String term;
-  final String definition;
-  final bool mastered;
-
-  const DemoFlashcard({
-    required this.term,
-    required this.definition,
-    this.mastered = false,
-  });
-}
+import 'package:studnet_ai_buddy/domain/entities/flashcard.dart';
+import 'package:studnet_ai_buddy/domain/repositories/flashcard_repository.dart';
+import 'package:studnet_ai_buddy/di/service_locator.dart';
 
 /// Screen showing study set details with flashcards.
 class StudySetDetailScreen extends StatefulWidget {
@@ -41,51 +31,52 @@ class StudySetDetailScreen extends StatefulWidget {
 }
 
 class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
-  // Demo data - in real app, load from repository
-  late String _title;
-  late String _category;
-  final List<DemoFlashcard> _flashcards = [
-    const DemoFlashcard(
-      term: 'Photosynthesis',
-      definition:
-          'The process by which green plants use sunlight to synthesize nutrients from carbon dioxide and water.',
-      mastered: true,
-    ),
-    const DemoFlashcard(
-      term: 'Mitochondria',
-      definition:
-          'Organelles found in large numbers in most cells, in which the biochemical processes of respiration and energy production occur.',
-      mastered: true,
-    ),
-    const DemoFlashcard(
-      term: 'DNA',
-      definition:
-          'Deoxyribonucleic acid, a self-replicating material present in nearly all living organisms as the main constituent of chromosomes.',
-      mastered: false,
-    ),
-    const DemoFlashcard(
-      term: 'Cell Membrane',
-      definition:
-          'The semipermeable membrane surrounding the cytoplasm of a cell.',
-    ),
-    const DemoFlashcard(
-      term: 'Ribosome',
-      definition:
-          'A minute particle consisting of RNA and associated proteins, found in large numbers in the cytoplasm.',
-    ),
-  ];
+  // State
+  List<Flashcard> _flashcards = [];
+  bool _isLoading = true;
+  String _title = '';
+  String _category = '';
 
-  int get _masteredCount => _flashcards.where((f) => f.mastered).length;
+  // Repository
+  final _flashcardRepository = getIt<FlashcardRepository>();
 
   @override
   void initState() {
     super.initState();
-    _title = widget.title ?? 'Biology 101';
-    _category = widget.category ?? 'Science';
+    _title = widget.title ?? 'Study Set';
+    _category = widget.category ?? 'General';
+    _loadFlashcards();
   }
+
+  Future<void> _loadFlashcards() async {
+    final result = await _flashcardRepository.getFlashcardsByStudySetId(
+      widget.studySetId,
+    );
+
+    if (mounted) {
+      setState(() {
+        result.fold(
+          onSuccess: (cards) => _flashcards = cards,
+          onFailure: (_) => _flashcards =
+              [], // Should probably show error, but empty state works for now
+        );
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Remove demo data class reference completely and use Flashcard entity
+  // No DemoFlashcard class needed anymore
+
+  // Placeholder for mastery logic (future feature)
+  int get _masteredCount => 0;
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -645,17 +636,13 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
     );
   }
 
-  Widget _buildFlashcardItem(int index, DemoFlashcard card) {
+  Widget _buildFlashcardItem(int index, Flashcard card) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: StudyBuddyColors.cardBackground,
         borderRadius: StudyBuddyDecorations.borderRadiusL,
-        border: Border.all(
-          color: card.mastered
-              ? StudyBuddyColors.success.withValues(alpha: 0.3)
-              : StudyBuddyColors.border,
-        ),
+        border: Border.all(color: StudyBuddyColors.border),
       ),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -667,26 +654,18 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: card.mastered
-                ? StudyBuddyColors.success.withValues(alpha: 0.1)
-                : StudyBuddyColors.primary.withValues(alpha: 0.1),
+            color: StudyBuddyColors.primary.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Center(
-            child: card.mastered
-                ? const Icon(
-                    Icons.check_rounded,
-                    size: 18,
-                    color: StudyBuddyColors.success,
-                  )
-                : Text(
-                    '${index + 1}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: StudyBuddyColors.primary,
-                    ),
-                  ),
+            child: Text(
+              '${index + 1}',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: StudyBuddyColors.primary,
+              ),
+            ),
           ),
         ),
         title: Text(
@@ -697,12 +676,7 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
             color: StudyBuddyColors.textPrimary,
           ),
         ),
-        subtitle: card.mastered
-            ? const Text(
-                'Mastered',
-                style: TextStyle(fontSize: 12, color: StudyBuddyColors.success),
-              )
-            : null,
+        subtitle: null,
         iconColor: StudyBuddyColors.textSecondary,
         children: [
           Container(

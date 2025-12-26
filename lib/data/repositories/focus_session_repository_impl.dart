@@ -1,9 +1,9 @@
 /// Focus Session Repository Implementation.
 /// Concrete implementation of FocusSessionRepository interface using Firebase Firestore.
-/// 
+///
 /// Layer: Data
 /// Responsibility: Data operations for focus sessions via Firestore.
-/// 
+///
 /// Firestore Collections Used:
 /// - focus_sessions: Individual study session records
 library;
@@ -25,8 +25,8 @@ class FocusSessionRepositoryImpl implements FocusSessionRepository {
   FocusSessionRepositoryImpl({
     required FirebaseFirestore firestore,
     required FirebaseAuth auth,
-  })  : _firestore = firestore,
-        _auth = auth;
+  }) : _firestore = firestore,
+       _auth = auth;
 
   String get _currentStudentId => _auth.currentUser?.uid ?? '';
 
@@ -55,10 +55,12 @@ class FocusSessionRepositoryImpl implements FocusSessionRepository {
 
       return Success(session);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to fetch active session: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to fetch active session: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -70,27 +72,29 @@ class FocusSessionRepositoryImpl implements FocusSessionRepository {
     DateTime end,
   ) async {
     try {
-      final startTimestamp = Timestamp.fromDate(start);
-      final endTimestamp = Timestamp.fromDate(end);
-
       final querySnapshot = await _firestore
           .collection(_focusSessionsCollection)
           .where('studentId', isEqualTo: _currentStudentId)
-          .where('startedAt', isGreaterThanOrEqualTo: startTimestamp)
-          .where('startedAt', isLessThanOrEqualTo: endTimestamp)
-          .orderBy('startedAt', descending: true)
+          // Removed date range filter to avoid index requirement "FAILED_PRECONDITION"
+          // We will filter in memory below
           .get();
 
       final sessions = querySnapshot.docs
           .map((doc) => _mapDocumentToFocusSession(doc))
+          .where((s) => s.startTime.isAfter(start) && s.startTime.isBefore(end))
           .toList();
+
+      // Sort in memory by startedAt descending
+      sessions.sort((a, b) => b.startTime.compareTo(a.startTime));
 
       return Success(sessions);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to fetch sessions: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to fetch sessions: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -109,10 +113,12 @@ class FocusSessionRepositoryImpl implements FocusSessionRepository {
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to save session: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to save session: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -140,10 +146,12 @@ class FocusSessionRepositoryImpl implements FocusSessionRepository {
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to update session: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to update session: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -237,7 +245,7 @@ class FocusSessionRepositoryImpl implements FocusSessionRepository {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Maps Firestore document to FocusSession domain entity.
-  /// 
+  ///
   /// Firestore schema (focus_sessions):
   /// - sessionId: string
   /// - studentId: string
@@ -252,7 +260,8 @@ class FocusSessionRepositoryImpl implements FocusSessionRepository {
   ) {
     final data = doc.data()!;
 
-    final startedAt = (data['startedAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final startedAt =
+        (data['startedAt'] as Timestamp?)?.toDate() ?? DateTime.now();
     final endedAt = (data['endedAt'] as Timestamp?)?.toDate();
     final statusString = data['status'] as String? ?? 'completed';
 

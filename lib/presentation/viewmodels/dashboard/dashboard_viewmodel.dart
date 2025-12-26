@@ -1,21 +1,24 @@
 /// Dashboard ViewModel.
 /// Manages state for the main dashboard screen.
-/// 
+///
 /// Layer: Presentation
 /// Responsibility: Aggregate and expose dashboard data to UI.
 /// Inputs: Study plan, tasks, focus sessions.
 /// Outputs: Dashboard state with quick actions and status.
-/// 
+///
 /// Dependencies: StudyPlanRepository, FocusSessionRepository, AcademicRepository
 library;
 
 import 'package:studnet_ai_buddy/domain/entities/academic_profile.dart';
+import 'package:studnet_ai_buddy/domain/entities/focus_session.dart';
 import 'package:studnet_ai_buddy/domain/entities/study_task.dart';
 import 'package:studnet_ai_buddy/domain/entities/subject.dart';
 import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/focus_session_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/study_plan_repository.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
+import 'package:studnet_ai_buddy/di/service_locator.dart';
+import 'package:studnet_ai_buddy/domain/services/local_storage_service.dart';
 
 /// Subject with progress tracking for dashboard display.
 class SubjectProgress {
@@ -48,8 +51,12 @@ class DashboardState {
   final int totalStudyMinutes;
   final int completedTasksCount;
   final int currentStreakDays;
+  final List<FocusSession> recentSessions;
   final String tipOfTheDay;
   final String? errorMessage;
+  final int weeklyStudyMinutes;
+  final int weeklyGoalMinutes;
+  final int dailyTaskGoal; // Added
 
   const DashboardState({
     this.viewState = ViewState.initial,
@@ -61,8 +68,12 @@ class DashboardState {
     this.totalStudyMinutes = 0,
     this.completedTasksCount = 0,
     this.currentStreakDays = 0,
+    this.recentSessions = const [],
     this.tipOfTheDay = '',
     this.errorMessage,
+    this.weeklyStudyMinutes = 0,
+    this.weeklyGoalMinutes = 900, // Default 15 hours
+    this.dailyTaskGoal = 5,
   });
 
   DashboardState copyWith({
@@ -75,8 +86,12 @@ class DashboardState {
     int? totalStudyMinutes,
     int? completedTasksCount,
     int? currentStreakDays,
+    List<FocusSession>? recentSessions,
     String? tipOfTheDay,
     String? errorMessage,
+    int? weeklyStudyMinutes,
+    int? weeklyGoalMinutes,
+    int? dailyTaskGoal,
   }) {
     return DashboardState(
       viewState: viewState ?? this.viewState,
@@ -88,8 +103,12 @@ class DashboardState {
       totalStudyMinutes: totalStudyMinutes ?? this.totalStudyMinutes,
       completedTasksCount: completedTasksCount ?? this.completedTasksCount,
       currentStreakDays: currentStreakDays ?? this.currentStreakDays,
+      recentSessions: recentSessions ?? this.recentSessions,
       tipOfTheDay: tipOfTheDay ?? this.tipOfTheDay,
       errorMessage: errorMessage,
+      weeklyStudyMinutes: weeklyStudyMinutes ?? this.weeklyStudyMinutes,
+      weeklyGoalMinutes: weeklyGoalMinutes ?? this.weeklyGoalMinutes,
+      dailyTaskGoal: dailyTaskGoal ?? this.dailyTaskGoal,
     );
   }
 
@@ -135,9 +154,9 @@ class DashboardViewModel extends BaseViewModel {
     required StudyPlanRepository studyPlanRepository,
     required FocusSessionRepository focusSessionRepository,
     required AcademicRepository academicRepository,
-  })  : _studyPlanRepository = studyPlanRepository,
-        _focusSessionRepository = focusSessionRepository,
-        _academicRepository = academicRepository;
+  }) : _studyPlanRepository = studyPlanRepository,
+       _focusSessionRepository = focusSessionRepository,
+       _academicRepository = academicRepository;
 
   DashboardState _state = const DashboardState();
   DashboardState get state => _state;
@@ -159,9 +178,21 @@ class DashboardViewModel extends BaseViewModel {
     AcademicProfile? profile;
 
     profileResult.fold(
-      onSuccess: (p) => profile = p,
-      onFailure: (_) {},
+      onSuccess: (p) {
+        profile = p;
+        // developer.log('DashboardViewModel: Loaded profile for ${p?.studentName ?? 'null'}');
+      },
+      onFailure: (f) {
+        // developer.log('DashboardViewModel: Failed to load profile: ${f.message}');
+      },
     );
+
+    // Load preferences for goals
+    final prefs = getIt<LocalStorageService>();
+    final weeklyGoalHours = await prefs.getInt('pref_weekly_goal') ?? 15;
+    final weeklyGoalMinutes = weeklyGoalHours * 60;
+    final dailyTaskGoal =
+        await prefs.getInt('pref_daily_task_goal') ?? 5; // Load daily goal
 
     // Load subjects for mapping
     final subjectsResult = await _academicRepository.getEnrolledSubjects();
@@ -198,13 +229,34 @@ class DashboardViewModel extends BaseViewModel {
       onFailure: (_) {},
     );
 
-    // Load weekly stats for streak calculation
+    // Load weekly stats for streak calculation and weekly progress
     final weeklyResult = await _focusSessionRepository.getWeeklyFocusStats();
     int streakDays = 0;
+    int weeklyStudyMinutes = 0;
 
     weeklyResult.fold(
       onSuccess: (stats) {
         streakDays = _calculateStreak(stats);
+        weeklyStudyMinutes = stats.values.fold(0, (sum, val) => sum + val);
+      },
+      onFailure: (_) {},
+    );
+
+    // Load recent sessions (last 30 days, take top 3)
+    final now = DateTime.now();
+    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+    final sessionsResult = await _focusSessionRepository.getSessionsInRange(
+      thirtyDaysAgo,
+      now,
+    );
+    List<FocusSession> recentSessions = [];
+
+    sessionsResult.fold(
+      onSuccess: (sessions) {
+        // Sort by startTime descending
+        sessions.sort((a, b) => b.startTime.compareTo(a.startTime));
+        // Take top 3
+        recentSessions = sessions.take(3).toList();
       },
       onFailure: (_) {},
     );
@@ -234,8 +286,12 @@ class DashboardViewModel extends BaseViewModel {
       totalStudyMinutes: focusMinutes,
       completedTasksCount: completedCount,
       currentStreakDays: streakDays,
+      recentSessions: recentSessions,
       tipOfTheDay: tip,
       errorMessage: null,
+      weeklyStudyMinutes: weeklyStudyMinutes,
+      weeklyGoalMinutes: weeklyGoalMinutes,
+      dailyTaskGoal: dailyTaskGoal,
     );
     notifyListeners();
   }
@@ -357,7 +413,10 @@ class DashboardViewModel extends BaseViewModel {
       final subject = _subjectsMap[subjectId];
 
       final completedCount = subjectTaskList.where((t) => t.isCompleted).length;
-      final totalMinutes = subjectTaskList.fold(0, (sum, t) => sum + t.estimatedMinutes);
+      final totalMinutes = subjectTaskList.fold(
+        0,
+        (sum, t) => sum + t.estimatedMinutes,
+      );
 
       return SubjectProgress(
         subjectId: subjectId,
@@ -416,7 +475,9 @@ class DashboardViewModel extends BaseViewModel {
       'Set specific goals for each study session.',
     ];
 
-    final dayOfYear = DateTime.now().difference(DateTime(DateTime.now().year)).inDays;
+    final dayOfYear = DateTime.now()
+        .difference(DateTime(DateTime.now().year))
+        .inDays;
     return tips[dayOfYear % tips.length];
   }
 

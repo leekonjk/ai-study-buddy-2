@@ -1,11 +1,11 @@
 /// Focus Session ViewModel.
 /// Manages state for focus/study session tracking.
-/// 
+///
 /// Layer: Presentation
 /// Responsibility: Timer control, session tracking, distraction logging.
 /// Inputs: User actions (start, pause, complete session).
 /// Outputs: Session state, timer updates.
-/// 
+///
 /// Dependencies: FocusSessionRepository
 library;
 
@@ -13,6 +13,8 @@ import 'dart:async';
 
 import 'package:studnet_ai_buddy/domain/entities/focus_session.dart';
 import 'package:studnet_ai_buddy/domain/repositories/focus_session_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/achievement_repository.dart';
+import 'package:studnet_ai_buddy/domain/entities/achievement.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 
 /// Immutable state for focus session screen.
@@ -152,10 +154,13 @@ class FocusSessionState {
 /// Coordinates with repository to track and persist focus sessions.
 class FocusSessionViewModel extends BaseViewModel {
   final FocusSessionRepository _focusSessionRepository;
+  final AchievementRepository _achievementRepository;
 
   FocusSessionViewModel({
     required FocusSessionRepository focusSessionRepository,
-  }) : _focusSessionRepository = focusSessionRepository;
+    required AchievementRepository achievementRepository,
+  }) : _focusSessionRepository = focusSessionRepository,
+       _achievementRepository = achievementRepository;
 
   FocusSessionState _state = const FocusSessionState();
   FocusSessionState get state => _state;
@@ -178,7 +183,9 @@ class FocusSessionViewModel extends BaseViewModel {
       onSuccess: (session) {
         if (session != null) {
           // Resume active session
-          final elapsed = DateTime.now().difference(session.startTime).inSeconds;
+          final elapsed = DateTime.now()
+              .difference(session.startTime)
+              .inSeconds;
           _state = _state.copyWith(
             activeSession: session,
             elapsedSeconds: elapsed,
@@ -208,7 +215,10 @@ class FocusSessionViewModel extends BaseViewModel {
     // Load recent sessions (last 7 days)
     final now = DateTime.now();
     final weekAgo = now.subtract(const Duration(days: 7));
-    final recentResult = await _focusSessionRepository.getSessionsInRange(weekAgo, now);
+    final recentResult = await _focusSessionRepository.getSessionsInRange(
+      weekAgo,
+      now,
+    );
 
     recentResult.fold(
       onSuccess: (sessions) {
@@ -274,10 +284,7 @@ class FocusSessionViewModel extends BaseViewModel {
     if (!_state.isRunning) return;
 
     _timer?.cancel();
-    _state = _state.copyWith(
-      isRunning: false,
-      isPaused: true,
-    );
+    _state = _state.copyWith(isRunning: false, isPaused: true);
     notifyListeners();
 
     _updateSessionInRepository();
@@ -287,10 +294,7 @@ class FocusSessionViewModel extends BaseViewModel {
   void resumeSession() {
     if (!_state.isPaused) return;
 
-    _state = _state.copyWith(
-      isRunning: true,
-      isPaused: false,
-    );
+    _state = _state.copyWith(isRunning: true, isPaused: false);
     notifyListeners();
 
     _startTimer();
@@ -301,9 +305,7 @@ class FocusSessionViewModel extends BaseViewModel {
   void logDistraction() {
     if (!_state.hasActiveSession) return;
 
-    _state = _state.copyWith(
-      distractionsCount: _state.distractionsCount + 1,
-    );
+    _state = _state.copyWith(distractionsCount: _state.distractionsCount + 1);
     notifyListeners();
   }
 
@@ -320,12 +322,15 @@ class FocusSessionViewModel extends BaseViewModel {
       distractionsCount: _state.distractionsCount,
     );
 
-    final result = await _focusSessionRepository.updateSession(completedSession);
+    final result = await _focusSessionRepository.updateSession(
+      completedSession,
+    );
 
     result.fold(
       onSuccess: (_) {
         // Update today's minutes
-        final newTodayMinutes = _state.todayFocusMinutes + _state.elapsedMinutes;
+        final newTodayMinutes =
+            _state.todayFocusMinutes + _state.elapsedMinutes;
 
         // Add to recent sessions
         final updatedRecent = [completedSession, ..._state.recentSessions];
@@ -335,14 +340,64 @@ class FocusSessionViewModel extends BaseViewModel {
           recentSessions: updatedRecent,
         );
         notifyListeners();
+
+        // Check for achievements
+        _checkAchievementsAfterSession(newTodayMinutes);
       },
       onFailure: (failure) {
         _state = _state.copyWith(
-          errorMessage: 'Session completed but failed to save: ${failure.message}',
+          errorMessage:
+              'Session completed but failed to save: ${failure.message}',
         );
         notifyListeners();
       },
     );
+  }
+
+  /// Completes session and returns newly unlocked achievements for UI notifications.
+  Future<List<Achievement>> completeSessionWithNotification() async {
+    if (!_state.hasActiveSession) return [];
+
+    _timer?.cancel();
+
+    final completedSession = _state.activeSession!.copyWith(
+      endTime: DateTime.now(),
+      actualMinutes: _state.elapsedMinutes,
+      status: FocusSessionStatus.completed,
+      distractionsCount: _state.distractionsCount,
+    );
+
+    final result = await _focusSessionRepository.updateSession(
+      completedSession,
+    );
+
+    List<Achievement> unlocked = [];
+
+    await result.fold(
+      onSuccess: (_) async {
+        final newTodayMinutes =
+            _state.todayFocusMinutes + _state.elapsedMinutes;
+        final updatedRecent = [completedSession, ..._state.recentSessions];
+
+        _state = _state.clearSession().copyWith(
+          todayFocusMinutes: newTodayMinutes,
+          recentSessions: updatedRecent,
+        );
+        notifyListeners();
+
+        // Check achievements and get newly unlocked ones
+        unlocked = await _checkAchievementsAfterSession(newTodayMinutes);
+      },
+      onFailure: (failure) {
+        _state = _state.copyWith(
+          errorMessage:
+              'Session completed but failed to save: ${failure.message}',
+        );
+        notifyListeners();
+      },
+    );
+
+    return unlocked;
   }
 
   /// Cancels the active session.
@@ -358,7 +413,9 @@ class FocusSessionViewModel extends BaseViewModel {
       distractionsCount: _state.distractionsCount,
     );
 
-    final result = await _focusSessionRepository.updateSession(cancelledSession);
+    final result = await _focusSessionRepository.updateSession(
+      cancelledSession,
+    );
 
     result.fold(
       onSuccess: (_) {
@@ -368,7 +425,8 @@ class FocusSessionViewModel extends BaseViewModel {
       onFailure: (failure) {
         // Clear locally even if save fails
         _state = _state.clearSession().copyWith(
-          errorMessage: 'Session cancelled but failed to save: ${failure.message}',
+          errorMessage:
+              'Session cancelled but failed to save: ${failure.message}',
         );
         notifyListeners();
       },
@@ -384,9 +442,7 @@ class FocusSessionViewModel extends BaseViewModel {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_state.isRunning && !_state.isPaused) {
-        _state = _state.copyWith(
-          elapsedSeconds: _state.elapsedSeconds + 1,
-        );
+        _state = _state.copyWith(elapsedSeconds: _state.elapsedSeconds + 1);
         notifyListeners();
 
         // Check if session is complete
@@ -400,9 +456,7 @@ class FocusSessionViewModel extends BaseViewModel {
   /// Manually updates elapsed time (for testing or external sync).
   void tick() {
     if (_state.isRunning && !_state.isPaused) {
-      _state = _state.copyWith(
-        elapsedSeconds: _state.elapsedSeconds + 1,
-      );
+      _state = _state.copyWith(elapsedSeconds: _state.elapsedSeconds + 1);
       notifyListeners();
 
       if (_state.isSessionComplete) {
@@ -443,7 +497,10 @@ class FocusSessionViewModel extends BaseViewModel {
 
     final now = DateTime.now();
     final weekAgo = now.subtract(const Duration(days: 7));
-    final recentResult = await _focusSessionRepository.getSessionsInRange(weekAgo, now);
+    final recentResult = await _focusSessionRepository.getSessionsInRange(
+      weekAgo,
+      now,
+    );
 
     recentResult.fold(
       onSuccess: (sessions) {
@@ -463,6 +520,35 @@ class FocusSessionViewModel extends BaseViewModel {
   void dismissError() {
     _state = _state.copyWith(errorMessage: null);
     notifyListeners();
+  }
+
+  /// Checks and unlocks achievements after completing a focus session.
+  Future<List<Achievement>> _checkAchievementsAfterSession(
+    int totalStudyMinutes,
+  ) async {
+    try {
+      // Get session count from recent sessions
+      final totalSessions = _state.recentSessions
+          .where((s) => s.status == FocusSessionStatus.completed)
+          .length;
+
+      // Check achievements based on study stats
+      final result = await _achievementRepository.checkAndUnlockAchievements(
+        totalStudyMinutes: totalStudyMinutes,
+        totalNotes: 0, // Not tracked in focus session
+        totalSessions: totalSessions,
+        studyStreak: 0, // Not tracked in focus session
+      );
+
+      // Return unlocked achievements if successful
+      return result.fold(
+        onSuccess: (achievements) => achievements,
+        onFailure: (_) => <Achievement>[],
+      );
+    } catch (e) {
+      // Silently fail - achievements aren't critical
+      return <Achievement>[];
+    }
   }
 
   @override

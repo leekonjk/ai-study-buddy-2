@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/profile/profile_viewmodel.dart';
+import 'package:studnet_ai_buddy/domain/entities/achievement.dart';
 
 /// User profile screen with settings and statistics.
 class ProfileScreen extends StatefulWidget {
@@ -59,7 +60,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final state = vm.state;
 
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
                   child: Column(
                     children: [
                       // Header
@@ -152,15 +153,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 32),
 
+                      // Achievements
+                      _buildAchievementsSection(context, state.achievements),
+                      const SizedBox(height: 32),
+
                       // Settings section
                       Container(
                         decoration: StudyBuddyDecorations.cardDecoration,
                         child: Column(
                           children: [
                             _buildSettingsTile(
-                              icon: Icons.person_outline_rounded,
-                              title: 'Edit Profile',
-                              onTap: () {},
+                              icon: Icons.settings_outlined,
+                              title: 'Edit Preferences',
+                              onTap: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.editProfile,
+                                );
+                              },
                             ),
                             const Divider(
                               color: StudyBuddyColors.border,
@@ -207,16 +217,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 context,
                                 AppRoutes.achievements,
                               ),
-                            ),
-                            const Divider(
-                              color: StudyBuddyColors.border,
-                              height: 1,
-                            ),
-                            _buildSettingsTile(
-                              icon: Icons.note_alt_rounded,
-                              title: 'My Notes',
-                              onTap: () =>
-                                  Navigator.pushNamed(context, AppRoutes.notes),
                             ),
                             const Divider(
                               color: StudyBuddyColors.border,
@@ -298,6 +298,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAchievementsSection(
+    BuildContext context,
+    List<Achievement> achievements,
+  ) {
+    // Only show unlocked or first 3 locked ones as teaser
+    final displayList = achievements;
+    // In real app, might want to show all but greyed out.
+    // For now, let's show all horizontally.
+
+    if (displayList.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Badges',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: StudyBuddyColors.textPrimary,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                // Navigate to full achievement list
+              },
+              child: const Text('View All'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 80,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: displayList.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final achievement = displayList[index];
+              return Tooltip(
+                message: '${achievement.title}\n${achievement.description}',
+                triggerMode: TooltipTriggerMode.tap,
+                child: Container(
+                  width: 80,
+                  decoration: BoxDecoration(
+                    color: achievement.isUnlocked
+                        ? StudyBuddyColors.accent.withValues(alpha: 0.2)
+                        : Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: achievement.isUnlocked
+                          ? StudyBuddyColors.accent.withValues(alpha: 0.5)
+                          : Colors.transparent,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        achievement.isUnlocked
+                            ? Icons.emoji_events_rounded
+                            : Icons.lock_outline_rounded,
+                        color: achievement.isUnlocked
+                            ? StudyBuddyColors.accent
+                            : Colors.grey,
+                        size: 32,
+                      ),
+                      const SizedBox(height: 4),
+                      // Mini Label (optional, maybe too crowded)
+                      // Text(achievement.title, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

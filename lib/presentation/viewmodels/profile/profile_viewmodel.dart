@@ -2,10 +2,19 @@
 /// Manages state for the user profile screen.
 library;
 
+import 'package:studnet_ai_buddy/core/utils/result.dart'; // Added
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/focus_session_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/achievement_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/note_repository.dart';
+import 'package:studnet_ai_buddy/domain/services/notification_service.dart'; // Added
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
+
+import 'package:studnet_ai_buddy/domain/entities/achievement.dart';
+
+import 'package:studnet_ai_buddy/domain/entities/academic_profile.dart';
 
 class ProfileState {
   final ViewState viewState;
@@ -15,6 +24,8 @@ class ProfileState {
   final int streakDays;
   final int quizzesCompleted;
   final int totalStudyHours;
+  final List<Achievement> achievements;
+  final AcademicProfile? academicProfile; // Added
   final String? errorMessage;
 
   const ProfileState({
@@ -25,6 +36,8 @@ class ProfileState {
     this.streakDays = 0,
     this.quizzesCompleted = 0,
     this.totalStudyHours = 0,
+    this.achievements = const [],
+    this.academicProfile, // Added
     this.errorMessage,
   });
 
@@ -36,6 +49,8 @@ class ProfileState {
     int? streakDays,
     int? quizzesCompleted,
     int? totalStudyHours,
+    List<Achievement>? achievements,
+    AcademicProfile? academicProfile, // Added
     String? errorMessage,
   }) {
     return ProfileState(
@@ -46,6 +61,8 @@ class ProfileState {
       streakDays: streakDays ?? this.streakDays,
       quizzesCompleted: quizzesCompleted ?? this.quizzesCompleted,
       totalStudyHours: totalStudyHours ?? this.totalStudyHours,
+      achievements: achievements ?? this.achievements,
+      academicProfile: academicProfile ?? this.academicProfile, // Added
       errorMessage: errorMessage,
     );
   }
@@ -54,14 +71,23 @@ class ProfileState {
 class ProfileViewModel extends BaseViewModel {
   final AcademicRepository _academicRepository;
   final FocusSessionRepository _focusSessionRepository;
+  final AchievementRepository _achievementRepository;
+  final NoteRepository _noteRepository;
+  final NotificationService _notificationService;
   final FirebaseAuth _auth;
 
   ProfileViewModel({
     required AcademicRepository academicRepository,
     required FocusSessionRepository focusSessionRepository,
+    required AchievementRepository achievementRepository,
+    required NoteRepository noteRepository,
+    required NotificationService notificationService,
     required FirebaseAuth auth,
   }) : _academicRepository = academicRepository,
        _focusSessionRepository = focusSessionRepository,
+       _achievementRepository = achievementRepository,
+       _noteRepository = noteRepository,
+       _notificationService = notificationService,
        _auth = auth;
 
   ProfileState _state = const ProfileState();
@@ -88,20 +114,19 @@ class ProfileViewModel extends BaseViewModel {
 
     // Try to get name from Academic Profile if available
     final profileResult = await _academicRepository.getAcademicProfile();
+    AcademicProfile? loadedProfile;
     profileResult.fold(
-      onSuccess: (p) => displayName = p?.studentName ?? displayName,
+      onSuccess: (p) {
+        if (p != null) {
+          displayName = p.studentName;
+          loadedProfile = p;
+        }
+      },
       onFailure: (_) {},
     );
 
     // Load Stats
-    // 1. Study Hours (Total Focus Minutes / 60)
-    final sessionsResult = await _focusSessionRepository
-        .getWeeklyFocusStats(); // This is weekly, maybe we need total?
-    // The repository interface might determine if we can get ALL sessions or total stats.
-    // For now, let's assume we can calculate from what we have or add a method.
-    // Actually FocusSessionRepository has getFocusHistory?
-    // Let's use getWeeklyFocusStats for now as a proxy or stick to available methods.
-    // DashboardViewModel calculates streak from weekly stats.
+    final sessionsResult = await _focusSessionRepository.getWeeklyFocusStats();
 
     int streak = 0;
     int totalMinutes = 0;
@@ -114,12 +139,42 @@ class ProfileViewModel extends BaseViewModel {
       onFailure: (_) {},
     );
 
-    // Quizzes Completed - Need QuizRepository.
-    // I'll skip injecting QuizRepository for this simple pass unless important.
-    // I'll leave quiz count as 0 or mock for now as I didn't verify QuizRepository methods.
-    // Wait, I should do it right.
-    // But I don't want to expand scope too much.
-    // Let's just use what we have.
+    // Load Note Count
+    int totalNotes = 0;
+    final notesResult = await _noteRepository.getNoteCount(user.uid);
+    notesResult.fold(
+      onSuccess: (count) => totalNotes = count,
+      onFailure: (_) {},
+    );
+
+    // Check & Unlock Achievements
+    final unlockResult = await _achievementRepository
+        .checkAndUnlockAchievements(
+          totalStudyMinutes: totalMinutes,
+          totalNotes: totalNotes,
+          totalSessions: totalMinutes > 0 ? 1 : 0,
+          studyStreak: streak,
+        );
+
+    // Notify about new unlocks
+    if (unlockResult is Success) {
+      final newUnlocks = (unlockResult as Success<List<Achievement>>).value;
+      for (final achievement in newUnlocks) {
+        // Show local notification
+        await _notificationService.showNotification(
+          title: 'Badge Unlocked: ${achievement.title}!',
+          body: achievement.description,
+        );
+      }
+    }
+
+    // Load Achievements (now including newly unlocked ones)
+    final achievementResult = await _achievementRepository.getAchievements();
+    List<Achievement> achievements = [];
+    achievementResult.fold(
+      onSuccess: (list) => achievements = list,
+      onFailure: (_) {},
+    );
 
     _state = _state.copyWith(
       viewState: ViewState.loaded,
@@ -128,17 +183,39 @@ class ProfileViewModel extends BaseViewModel {
       photoUrl: photoUrl,
       streakDays: streak,
       totalStudyHours: totalMinutes ~/ 60,
-      quizzesCompleted: 0, // Placeholder until QuizRepository connection
+      quizzesCompleted: 0,
+      academicProfile: loadedProfile,
+      achievements: achievements,
     );
     notifyListeners();
   }
 
+  Future<void> updateProfile(AcademicProfile profile) async {
+    _state = _state.copyWith(viewState: ViewState.loading);
+    notifyListeners();
+
+    final result = await _academicRepository.saveAcademicProfile(profile);
+
+    result.fold(
+      onSuccess: (_) {
+        _state = _state.copyWith(
+          viewState: ViewState.loaded,
+          displayName: profile.studentName,
+          academicProfile: profile,
+        );
+        notifyListeners();
+      },
+      onFailure: (failure) {
+        _state = _state.copyWith(
+          viewState: ViewState.error,
+          errorMessage: failure.message,
+        );
+        notifyListeners();
+      },
+    );
+  }
+
   int _calculateStreak(Map<String, int> weeklyStats) {
-    // (Copy logic from DashboardViewModel or move to shared util)
-    // For now, simple check.
-    // Logic duplicated for speed, should be refactored to domain service later.
-    return weeklyStats.values
-        .where((v) => v > 0)
-        .length; // Simple count of active days in week
+    return weeklyStats.values.where((v) => v > 0).length;
   }
 }

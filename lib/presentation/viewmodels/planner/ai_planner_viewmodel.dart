@@ -12,7 +12,10 @@ import 'package:studnet_ai_buddy/domain/entities/study_task.dart';
 import 'package:studnet_ai_buddy/domain/entities/subject.dart';
 import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/study_plan_repository.dart';
+import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
+import 'package:studnet_ai_buddy/di/service_locator.dart';
+import 'package:studnet_ai_buddy/domain/services/impl/achievement_service_impl.dart';
 
 /// Immutable state for AI Planner.
 class AIPlannerState {
@@ -55,12 +58,15 @@ class AIPlannerState {
 class AIPlannerViewModel extends BaseViewModel {
   final StudyPlanRepository _studyPlanRepository;
   final AcademicRepository _academicRepository;
+  final AIMentorService _aiMentorService;
 
   AIPlannerViewModel({
     required StudyPlanRepository studyPlanRepository,
     required AcademicRepository academicRepository,
+    required AIMentorService aiMentorService,
   }) : _studyPlanRepository = studyPlanRepository,
-       _academicRepository = academicRepository;
+       _academicRepository = academicRepository,
+       _aiMentorService = aiMentorService;
 
   AIPlannerState _state = const AIPlannerState();
   AIPlannerState get state => _state;
@@ -118,89 +124,211 @@ class AIPlannerViewModel extends BaseViewModel {
       return;
     }
 
-    // Mock AI Generation Logic for "New User Experience"
+    // Real AI Generation Logic
     final now = DateTime.now();
     final weekStart = _getWeekStart(now);
     final weekEnd = weekStart.add(const Duration(days: 6));
 
-    List<StudyTask> newTasks = [];
+    // Fetch Profile for personalization
+    final profileResult = await _academicRepository.getAcademicProfile();
+    final profile = profileResult.fold(
+      onSuccess: (p) => p,
+      onFailure: (_) => null,
+    );
 
-    // Generate 1-2 tasks per day for the week
-    for (int i = 0; i < 5; i++) {
-      // Mon-Fri
-      final date = weekStart.add(Duration(days: i));
-      // Simple round-robin subjects
-      final subject = subjects[i % subjects.length];
-
-      newTasks.add(
-        StudyTask(
-          id: "${DateTime.now().millisecondsSinceEpoch}_$i",
-          subjectId: subject.id,
-          title: "Review ${subject.name} - Chapter ${i + 1}",
-          description: "AI Generated task for ${subject.name}",
-          date: date,
-          estimatedMinutes: 45,
-          priority: TaskPriority.medium,
-          type: TaskType.study,
-          isCompleted: false,
-          aiReasoning: "Regular review schedule",
-        ),
+    if (profile == null) {
+      _state = _state.copyWith(
+        viewState: ViewState.error,
+        errorMessage:
+            "Please complete your academic profile to generate a plan.",
       );
-
-      if (i % 2 == 0) {
-        // Add extra task on some days
-        final subject2 = subjects[(i + 1) % subjects.length];
-        newTasks.add(
-          StudyTask(
-            id: "${DateTime.now().millisecondsSinceEpoch}_${i}_2",
-            subjectId: subject2.id,
-            title: "Practice questions for ${subject2.name}",
-            description: "Practice problems",
-            date: date,
-            estimatedMinutes: 30,
-            priority: TaskPriority.high,
-            type: TaskType.quiz,
-            isCompleted: false,
-            aiReasoning: "Skill reinforcement",
-          ),
-        );
-      }
+      return;
     }
 
-    final newPlan = StudyPlan(
-      id: "plan_${now.millisecondsSinceEpoch}",
-      weekStartDate: weekStart,
-      weekEndDate: weekEnd,
-      tasks: newTasks,
-      aiSummary:
-          "Initial study plan generated based on your enrolled subjects.",
-      keyObjectives: ["Establish routine", "Cover basics"],
-      generatedAt: now,
-    );
+    try {
+      final newTasks = await _aiMentorService.generateStudyPlan(
+        profile: profile,
+        subjects: subjects,
+      );
 
-    // Save to repository
-    final saveResult = await _studyPlanRepository.saveStudyPlan(newPlan);
+      // Assign dates starting from tomorrow?
+      // The AI returns tasks with roughly correct relative schedule or we can distribute them.
+      // Current AI impl assigns 'tomorrow' for all. Let's distribute them over the week.
 
-    saveResult.fold(
-      onSuccess: (_) {
-        _state = _state.copyWith(
-          viewState: ViewState.loaded,
-          currentPlan: newPlan,
-          tasks: newPlan.tasksForDate(DateTime.now()), // Today's tasks
-          subjects: subjects,
-        );
-      },
-      onFailure: (f) {
-        _state = _state.copyWith(
-          viewState: ViewState.error,
-          errorMessage: "Failed to generate plan: ${f.message}",
-        );
-      },
-    );
+      final distributedTasks = _distributeTasksOverWeek(newTasks, weekStart);
+
+      final newPlan = StudyPlan(
+        id: "plan_${now.millisecondsSinceEpoch}",
+        weekStartDate: weekStart,
+        weekEndDate: weekEnd,
+        tasks: distributedTasks,
+        aiSummary:
+            "Personalized study plan based on your goals and weak areas.",
+        keyObjectives: profile.goals.isNotEmpty
+            ? profile.goals
+            : ["Master core concepts"],
+        generatedAt: now,
+      );
+
+      // Save to repository
+      final saveResult = await _studyPlanRepository.saveStudyPlan(newPlan);
+
+      saveResult.fold(
+        onSuccess: (_) {
+          _state = _state.copyWith(
+            viewState: ViewState.loaded,
+            currentPlan: newPlan,
+            tasks: newPlan.tasksForDate(DateTime.now()),
+            subjects: subjects,
+          );
+        },
+        onFailure: (f) {
+          _state = _state.copyWith(
+            viewState: ViewState.error,
+            errorMessage: "Failed to save plan: ${f.message}",
+          );
+        },
+      );
+    } catch (e) {
+      _state = _state.copyWith(
+        viewState: ViewState.error,
+        errorMessage: "AI Generation failed: $e",
+      );
+    }
+  }
+
+  List<StudyTask> _distributeTasksOverWeek(
+    List<StudyTask> tasks,
+    DateTime weekStart,
+  ) {
+    // Simple round-robin distribution Mon-Fri
+    final distributed = <StudyTask>[];
+    for (int i = 0; i < tasks.length; i++) {
+      final dayOffset = i % 5; // 0=Mon, 4=Fri
+      // Logic to map weekStart (which is whatever day) to Mon-Fri?
+      // Assuming weekStart is Monday.
+      final date = weekStart.add(Duration(days: dayOffset));
+
+      final original = tasks[i];
+      distributed.add(
+        StudyTask(
+          id: original.id,
+          subjectId: original.subjectId,
+          title: original.title,
+          description: original.description,
+          date: date,
+          estimatedMinutes: original.estimatedMinutes,
+          priority: original.priority,
+          type: original.type,
+          isCompleted: original.isCompleted,
+          aiReasoning: original.aiReasoning,
+        ),
+      );
+    }
+    return distributed;
   }
 
   DateTime _getWeekStart(DateTime date) {
     final daysFromMonday = date.weekday - 1;
     return DateTime(date.year, date.month, date.day - daysFromMonday);
+  }
+
+  /// Adds a new manual task to the current plan.
+  Future<void> addTask({
+    required String title,
+    required String subjectId,
+    required DateTime date,
+    required int durationMinutes,
+  }) async {
+    if (_state.currentPlan == null) {
+      _state = _state.copyWith(
+        errorMessage:
+            "No active study plan found. Please wait for initialization.",
+      );
+      notifyListeners();
+      return;
+    }
+
+    final newTask = StudyTask(
+      id: "manual_${DateTime.now().millisecondsSinceEpoch}",
+      subjectId: subjectId,
+      title: title,
+      description: "User created task",
+      date: date,
+      estimatedMinutes: durationMinutes,
+      priority: TaskPriority.medium,
+      type: TaskType.study,
+      isCompleted: false,
+      aiReasoning: "Manual addition",
+    );
+
+    // Create updated plan
+    final updatedTasks = List<StudyTask>.from(_state.currentPlan!.tasks)
+      ..add(newTask);
+    final updatedPlan = _state.currentPlan!.copyWith(tasks: updatedTasks);
+
+    // Save to repo
+    final result = await _studyPlanRepository.saveStudyPlan(updatedPlan);
+
+    result.fold(
+      onSuccess: (_) {
+        _state = _state.copyWith(
+          currentPlan: updatedPlan,
+          tasks: updatedPlan.tasksForDate(DateTime.now()), // Refresh view
+          errorMessage: null,
+        );
+      },
+      onFailure: (failure) {
+        _state = _state.copyWith(
+          errorMessage: "Failed to save task: ${failure.message}",
+        );
+      },
+    );
+    notifyListeners();
+  }
+
+  /// Toggles a task's completion status and persists to Firestore.
+  Future<void> toggleTaskCompletion(String taskId) async {
+    if (_state.currentPlan == null) return;
+
+    // Find the task and toggle its completion
+    final updatedTasks = _state.currentPlan!.tasks.map((task) {
+      if (task.id == taskId) {
+        return task.copyWith(isCompleted: !task.isCompleted);
+      }
+      return task;
+    }).toList();
+
+    // Update the plan with new tasks
+    final updatedPlan = _state.currentPlan!.copyWith(tasks: updatedTasks);
+
+    // Persist to Firestore
+    final result = await _studyPlanRepository.saveStudyPlan(updatedPlan);
+
+    result.fold(
+      onSuccess: (_) {
+        // Update local state
+        _state = _state.copyWith(
+          currentPlan: updatedPlan,
+          tasks: updatedPlan.tasksForDate(DateTime.now()),
+        );
+        notifyListeners();
+
+        // Unlock achievements based on completed tasks
+        final completedCount = updatedPlan.tasks
+            .where((t) => t.isCompleted)
+            .length;
+        final achievementService = getIt<AchievementService>();
+        achievementService.checkFirstTaskCompletion(completedCount);
+        achievementService.checkTaskChampion(completedCount);
+      },
+      onFailure: (f) {
+        // If save fails, revert UI (or show error)
+        _state = _state.copyWith(
+          errorMessage: "Failed to update task: ${f.message}",
+        );
+        notifyListeners();
+      },
+    );
   }
 }

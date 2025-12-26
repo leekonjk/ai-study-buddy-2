@@ -14,7 +14,9 @@ import 'package:studnet_ai_buddy/presentation/widgets/core/progress_indicator_ba
 import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/welcome_step.dart';
 import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/name_step.dart';
 import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/education_step.dart';
+import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/subjects_step.dart';
 import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/goals_step.dart';
+import 'package:studnet_ai_buddy/domain/entities/subject.dart';
 import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/upload_step.dart';
 import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/completion_step.dart';
 
@@ -35,6 +37,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     const WelcomeStep(),
     const NameStep(),
     const EducationStep(),
+    const SubjectsStep(),
     const GoalsStep(),
     const UploadStep(),
     const CompletionStep(),
@@ -76,19 +79,53 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final localStorageService = getIt<LocalStorageService>();
     final academicRepository = getIt<AcademicRepository>();
 
-    // Show loading? (Ideally we should show a loading indicator)
+    // 1. Process Subjects
+    final subjectNames = (_onboardingData['subjects'] as List<String>?) ?? [];
+    List<String> enrolledSubjectIds = [];
 
-    // Create profile from data
+    if (subjectNames.isNotEmpty) {
+      final subjects = subjectNames.map((name) {
+        final id =
+            '${DateTime.now().millisecondsSinceEpoch}_${name.replaceAll(' ', '_').toLowerCase()}';
+        return Subject(
+          id: id,
+          name: name,
+          code:
+              '${name.substring(0, minimum(3, name.length)).toUpperCase()}-101',
+          creditHours: 3,
+          difficulty: SubjectDifficulty.intermediate,
+          topicIds: [],
+        );
+      }).toList();
+
+      // Save subjects to repository
+      final saveSubjectsResult = await academicRepository.saveSubjects(
+        subjects,
+      );
+
+      saveSubjectsResult.fold(
+        onSuccess: (_) {
+          enrolledSubjectIds = subjects.map((s) => s.id).toList();
+        },
+        onFailure: (f) {
+          debugPrint('Failed to save subjects: ${f.message}');
+          // Continue anyway, maybe show warning?
+        },
+      );
+    }
+
+    // 2. Create profile from data
     final profile = AcademicProfile(
-      id: '', // Repository generates ID
+      id: '', // Repository generates ID based on Auth UID usually
       studentName: _onboardingData['name'] as String? ?? 'Student',
+      universityName: _onboardingData['university'] as String? ?? '', // Added
       programName: _onboardingData['program'] as String? ?? 'General Studies',
-      currentSemester: 1, // Default
-      enrolledSubjectIds: [],
+      currentSemester: _onboardingData['semester'] as int? ?? 1,
+      enrolledSubjectIds: enrolledSubjectIds,
       enrollmentDate: DateTime.now(),
     );
 
-    // Save profile to Firestore
+    // 3. Save profile to Firestore
     final result = await academicRepository.saveAcademicProfile(profile);
 
     result.fold(
@@ -113,6 +150,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       },
     );
   }
+
+  int minimum(int a, int b) => a < b ? a : b;
 
   void _updateData(String key, dynamic value) {
     setState(() {

@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:studnet_ai_buddy/core/errors/failures.dart';
 import 'package:studnet_ai_buddy/core/utils/result.dart';
+import 'package:studnet_ai_buddy/domain/entities/study_set.dart';
 import 'package:studnet_ai_buddy/domain/repositories/study_set_repository.dart';
 
 /// Firestore implementation of StudySetRepository.
@@ -18,8 +19,8 @@ class StudySetRepositoryImpl implements StudySetRepository {
   StudySetRepositoryImpl({
     required FirebaseFirestore firestore,
     required FirebaseAuth auth,
-  })  : _firestore = firestore,
-        _auth = auth;
+  }) : _firestore = firestore,
+       _auth = auth;
 
   String get _currentStudentId => _auth.currentUser?.uid ?? '';
 
@@ -28,20 +29,26 @@ class StudySetRepositoryImpl implements StudySetRepository {
     try {
       final querySnapshot = await _firestore
           .collection(_studySetsCollection)
-          .where('studentId', isEqualTo: _currentStudentId)
-          .orderBy('lastUpdated', descending: true)
+          .where('creatorId', isEqualTo: _currentStudentId)
+          // Removed orderBy to avoid index requirement "FAILED_PRECONDITION"
+          // We will sort in memory below
           .get();
 
       final studySets = querySnapshot.docs.map((doc) {
         return _mapDocumentToStudySet(doc);
       }).toList();
 
+      // Sort in memory
+      studySets.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+
       return Success(studySets);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to fetch study sets: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to fetch study sets: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -55,10 +62,11 @@ class StudySetRepositoryImpl implements StudySetRepository {
     try {
       final querySnapshot = await _firestore
           .collection(_studySetsCollection)
-          .where('studentId', isEqualTo: _currentStudentId)
+          .where('creatorId', isEqualTo: _currentStudentId)
           .where('lastUpdated', isGreaterThanOrEqualTo: startDate)
           .where('lastUpdated', isLessThanOrEqualTo: endDate)
-          .orderBy('lastUpdated', descending: true)
+          // Removed orderBy to avoid index requirement "FAILED_PRECONDITION"
+          // We will sort in memory below
           .get();
 
       final studySets = querySnapshot.docs.map((doc) {
@@ -67,10 +75,12 @@ class StudySetRepositoryImpl implements StudySetRepository {
 
       return Success(studySets);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to fetch study sets: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to fetch study sets: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -91,10 +101,12 @@ class StudySetRepositoryImpl implements StudySetRepository {
       final studySet = _mapDocumentToStudySet(doc);
       return Success(studySet);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to fetch study set: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to fetch study set: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -104,33 +116,49 @@ class StudySetRepositoryImpl implements StudySetRepository {
   Future<Result<StudySet>> createStudySet({
     required String title,
     required String category,
+    String? subjectId,
     bool isPrivate = true,
   }) async {
     try {
       final now = DateTime.now();
       final studySetId = _firestore.collection(_studySetsCollection).doc().id;
 
+      final userId = _auth.currentUser?.uid;
+      if (userId == null) {
+        return Err(const NetworkFailure(message: 'User not logged in'));
+      }
+
+      print(
+        'Creating StudySet: ID=$studySetId, User=$userId, Title=$title',
+      ); // Debug log
+
       final studySet = StudySet(
         id: studySetId,
         title: title,
         category: category,
-        studentId: _currentStudentId,
+        studentId: userId,
+        subjectId: subjectId,
         isPrivate: isPrivate,
         createdAt: now,
         lastUpdated: now,
       );
 
+      final data = _mapStudySetToDocument(studySet);
+      print('StudySet Data: $data'); // Debug log
+
       await _firestore
           .collection(_studySetsCollection)
           .doc(studySetId)
-          .set(_mapStudySetToDocument(studySet));
+          .set(data);
 
       return Success(studySet);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to create study set: ${e.message}',
-        code: e.code,
-      ));
+      print(
+        'Firebase Error creating StudySet: code=${e.code}, message=${e.message}',
+      );
+      return Err(
+        NetworkFailure(message: 'Firebase Error: ${e.message}', code: e.code),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -146,10 +174,12 @@ class StudySetRepositoryImpl implements StudySetRepository {
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to update study set: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to update study set: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -165,10 +195,12 @@ class StudySetRepositoryImpl implements StudySetRepository {
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to delete study set: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to delete study set: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -177,20 +209,19 @@ class StudySetRepositoryImpl implements StudySetRepository {
   @override
   Future<Result<void>> addTopic(String studySetId, String topicId) async {
     try {
-      await _firestore
-          .collection(_studySetsCollection)
-          .doc(studySetId)
-          .update({
+      await _firestore.collection(_studySetsCollection).doc(studySetId).update({
         'topicIds': FieldValue.arrayUnion([topicId]),
         'lastUpdated': FieldValue.serverTimestamp(),
       });
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to add topic: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to add topic: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -202,20 +233,19 @@ class StudySetRepositoryImpl implements StudySetRepository {
     String flashcardId,
   ) async {
     try {
-      await _firestore
-          .collection(_studySetsCollection)
-          .doc(studySetId)
-          .update({
+      await _firestore.collection(_studySetsCollection).doc(studySetId).update({
         'flashcardIds': FieldValue.arrayUnion([flashcardId]),
         'lastUpdated': FieldValue.serverTimestamp(),
       });
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to add flashcard: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to add flashcard: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -224,20 +254,19 @@ class StudySetRepositoryImpl implements StudySetRepository {
   @override
   Future<Result<void>> addFile(String studySetId, String fileId) async {
     try {
-      await _firestore
-          .collection(_studySetsCollection)
-          .doc(studySetId)
-          .update({
+      await _firestore.collection(_studySetsCollection).doc(studySetId).update({
         'fileIds': FieldValue.arrayUnion([fileId]),
         'lastUpdated': FieldValue.serverTimestamp(),
       });
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to add file: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to add file: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -266,10 +295,12 @@ class StudySetRepositoryImpl implements StudySetRepository {
         'files': fileIds.length,
       });
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to get content counts: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to get content counts: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -277,8 +308,10 @@ class StudySetRepositoryImpl implements StudySetRepository {
 
   StudySet _mapDocumentToStudySet(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
-    final lastUpdated = (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final createdAt =
+        (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final lastUpdated =
+        (data['lastUpdated'] as Timestamp?)?.toDate() ?? DateTime.now();
     final topicIds = (data['topicIds'] as List<dynamic>?) ?? [];
     final flashcardIds = (data['flashcardIds'] as List<dynamic>?) ?? [];
     final fileIds = (data['fileIds'] as List<dynamic>?) ?? [];
@@ -287,7 +320,10 @@ class StudySetRepositoryImpl implements StudySetRepository {
       id: doc.id,
       title: data['title'] ?? '',
       category: data['category'] ?? '',
-      studentId: data['studentId'] ?? '',
+      studentId:
+          data['studentId'] ?? data['creatorId'] ?? '', // Handle both fields
+
+      subjectId: data['subjectId'],
       isPrivate: data['isPrivate'] ?? true,
       topicCount: topicIds.length,
       flashcardCount: flashcardIds.length,
@@ -302,8 +338,11 @@ class StudySetRepositoryImpl implements StudySetRepository {
       'title': studySet.title,
       'category': studySet.category,
       'studentId': studySet.studentId,
+      'creatorId': studySet.studentId, // Added to satisfy Firestore Rules
+      if (studySet.subjectId != null) 'subjectId': studySet.subjectId,
       'isPrivate': studySet.isPrivate,
-      'topicIds': [],
+      'topicIds':
+          [], // Note: These are handled by arrayUnion in specific methods
       'flashcardIds': [],
       'fileIds': [],
       'createdAt': Timestamp.fromDate(studySet.createdAt),
@@ -311,4 +350,3 @@ class StudySetRepositoryImpl implements StudySetRepository {
     };
   }
 }
-

@@ -9,6 +9,11 @@ import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart'
 import 'package:studnet_ai_buddy/presentation/navigation/main_shell.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/entities/flashcard.dart';
+import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
+import 'package:studnet_ai_buddy/core/utils/result.dart'; // Added for Err type
+
+import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
+import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart'; // Added
 
 /// Data class for a flashcard being created.
 class FlashcardData {
@@ -35,14 +40,18 @@ class AddFlashcardsScreen extends StatefulWidget {
   final String studySetTitle;
   final String studySetCategory;
   final String studySetDescription;
+  final String? subjectId; // Added subjectId
   final bool isPrivate;
+  final bool autoStartAI;
 
   const AddFlashcardsScreen({
     super.key,
     required this.studySetTitle,
     required this.studySetCategory,
     required this.studySetDescription,
+    this.subjectId, // Added
     required this.isPrivate,
+    this.autoStartAI = false,
   });
 
   @override
@@ -53,14 +62,170 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
   final List<FlashcardData> _flashcards = [];
   final ScrollController _scrollController = ScrollController();
   bool _isSaving = false;
+  bool _isGenerating = false;
   String _createdStudySetId = '';
+
+  // Inject AI Service
+  final _aiMentorService = getIt<AIMentorService>();
 
   @override
   void initState() {
     super.initState();
-    // Start with 2 empty flashcards
-    _flashcards.add(FlashcardData());
-    _flashcards.add(FlashcardData());
+    if (widget.autoStartAI) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Delay slightly to allow screen transition to finish
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) _generateWithAI();
+        });
+      });
+    }
+  }
+
+  Future<void> _generateWithAI() async {
+    // Show dialog to get card count
+    int? count = await showDialog<int>(
+      context: context,
+      builder: (context) {
+        int selectedCount = 5;
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: StudyBuddyColors.cardBackground,
+              title: const Text(
+                'Generate Flashcards',
+                style: TextStyle(color: StudyBuddyColors.textPrimary),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'How many cards do you want?',
+                    style: TextStyle(color: StudyBuddyColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$selectedCount',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: StudyBuddyColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: selectedCount.toDouble(),
+                    min: 3,
+                    max: 20,
+                    divisions: 17,
+                    activeColor: StudyBuddyColors.primary,
+                    onChanged: (val) {
+                      setState(() => selectedCount = val.toInt());
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, selectedCount),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: StudyBuddyColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Generate'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (count == null) return;
+
+    setState(() => _isGenerating = true);
+    try {
+      // Get user's enrolled subjects for context
+      final academicRepo = getIt<AcademicRepository>();
+      final subjectsResult = await academicRepo.getEnrolledSubjects();
+
+      String contextTopics = widget.studySetTitle;
+      subjectsResult.fold(
+        onSuccess: (subjects) {
+          // 1. Try to find the specific selected subject
+          if (widget.subjectId != null) {
+            final specificSubject = subjects
+                .where((s) => s.id == widget.subjectId)
+                .firstOrNull;
+
+            if (specificSubject != null) {
+              contextTopics =
+                  'Subject: ${specificSubject.name}. Topic: ${widget.studySetTitle}';
+              return;
+            }
+          }
+
+          // 2. Fallback to all enrolled subjects
+          if (subjects.isNotEmpty) {
+            final subjectNames = subjects.map((s) => s.name).join(', ');
+            contextTopics =
+                'Subject(s): $subjectNames. Topic: ${widget.studySetTitle}';
+          }
+        },
+        onFailure: (_) {
+          // Fallback to just the title
+          contextTopics = widget.studySetTitle;
+        },
+      );
+
+      final results = await _aiMentorService.generateFlashcardsFromTopics(
+        topics: contextTopics, // Now includes real subject context!
+        difficulty: 'medium',
+        count: count,
+      );
+
+      // Convert to FlashcardData
+      final newCards = results
+          .map(
+            (data) => FlashcardData(
+              term: data['term'] ?? '',
+              definition: data['definition'] ?? '',
+            ),
+          )
+          .toList();
+
+      setState(() {
+        // Remove empty initial cards if we have AI results
+        if (_flashcards.length <= 2 && _flashcards.every((c) => c.isEmpty)) {
+          _flashcards.clear();
+        }
+        _flashcards.addAll(newCards);
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Generated ${newCards.length} flashcards!'),
+            backgroundColor: StudyBuddyColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('AI Generation failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isGenerating = false);
+    }
   }
 
   @override
@@ -134,6 +299,7 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
       final studySetResult = await studySetRepository.createStudySet(
         title: widget.studySetTitle,
         category: widget.studySetCategory,
+        subjectId: widget.subjectId, // Pass subjectId
         isPrivate: widget.isPrivate,
       );
 
@@ -141,9 +307,12 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
         // Show error message to user
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to create study set. Please try again.'),
+            SnackBar(
+              content: Text(
+                'Failed: ${(studySetResult as Err).failure.message}',
+              ),
               backgroundColor: StudyBuddyColors.error,
+              duration: const Duration(seconds: 4),
             ),
           );
         }
@@ -171,6 +340,7 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
           studySetId: studySetId,
           term: cardData.term,
           definition: cardData.definition,
+          creatorId: '', // Repository will overwrite this with auth user ID
           createdAt: now,
           lastUpdated: now,
         );
@@ -183,19 +353,35 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
       for (var card in flashcardsToCreate) {
         await studySetRepository.addFlashcard(studySetId, card.id);
       }
+
+      // Success! Show dialog
+      if (mounted) {
+        setState(() => _isSaving = false);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => _buildSuccessDialog(validCards.length),
+        );
+      }
     } catch (e) {
       debugPrint('Error saving study set: $e');
-    }
 
-    if (mounted) {
-      setState(() => _isSaving = false);
-
-      // Show success dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => _buildSuccessDialog(validCards.length),
-      );
+      // Show error to user
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save study set: ${e.toString()}'),
+            backgroundColor: StudyBuddyColors.error,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _saveStudySet,
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -274,12 +460,13 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      // Navigate to flashcard study screen
+                      // Navigate to study set detail screen
                       Navigator.of(context).pushReplacementNamed(
-                        '/flashcard-study',
+                        AppRoutes.studySetDetail,
                         arguments: {
                           'studySetId': _createdStudySetId,
                           'title': widget.studySetTitle,
+                          'category': widget.studySetCategory,
                         },
                       );
                     },
@@ -291,7 +478,7 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
                         borderRadius: StudyBuddyDecorations.borderRadiusFull,
                       ),
                     ),
-                    child: const Text('Study Now'),
+                    child: const Text('View Set'),
                   ),
                 ),
               ],
@@ -318,22 +505,24 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
               // Card count indicator
               _buildCardCountIndicator(),
 
-              // Flashcard list
+              // Flashcard list or Empty State
               Expanded(
-                child: ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
-                  itemCount: _flashcards.length + 1, // +1 for add button
-                  itemBuilder: (context, index) {
-                    if (index == _flashcards.length) {
-                      return _buildAddCardButton();
-                    }
-                    return _buildFlashcardEditor(index)
-                        .animate()
-                        .fadeIn(delay: (index * 50).ms)
-                        .slideY(begin: 0.1, end: 0);
-                  },
-                ),
+                child: _flashcards.isEmpty
+                    ? _buildAIEmptyState()
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+                        itemCount: _flashcards.length + 1, // +1 for add button
+                        itemBuilder: (context, index) {
+                          if (index == _flashcards.length) {
+                            return _buildAddCardButton();
+                          }
+                          return _buildFlashcardEditor(index)
+                              .animate()
+                              .fadeIn(delay: (index * 50).ms)
+                              .slideY(begin: 0.1, end: 0);
+                        },
+                      ),
               ),
 
               // Bottom button
@@ -390,6 +579,22 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
               ],
             ),
           ),
+          // AI Button
+          if (_isGenerating)
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            TextButton.icon(
+              onPressed: _generateWithAI,
+              icon: const Icon(Icons.auto_awesome, size: 16),
+              label: const Text('AI Auto-Fill'),
+              style: TextButton.styleFrom(
+                foregroundColor: StudyBuddyColors.secondary,
+              ),
+            ),
         ],
       ),
     );
@@ -665,44 +870,115 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
         child: SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: isValid && !_isSaving ? _saveStudySet : null,
+            onPressed: isValid ? _saveStudySet : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: StudyBuddyColors.success,
+              backgroundColor: StudyBuddyColors.primary,
               foregroundColor: Colors.white,
-              disabledBackgroundColor: StudyBuddyColors.success.withValues(
-                alpha: 0.3,
-              ),
               padding: const EdgeInsets.symmetric(vertical: 16),
+              elevation: isValid ? 4 : 0,
               shape: RoundedRectangleBorder(
                 borderRadius: StudyBuddyDecorations.borderRadiusFull,
+              ),
+              disabledBackgroundColor: StudyBuddyColors.primary.withValues(
+                alpha: 0.3,
               ),
             ),
             child: _isSaving
                 ? const SizedBox(
-                    width: 24,
-                    height: 24,
+                    width: 20,
+                    height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor: AlwaysStoppedAnimation(Colors.white),
                     ),
                   )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.check_rounded, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        validCount > 0
-                            ? 'Create Study Set ($validCount cards)'
-                            : 'Create Study Set',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                : Text(
+                    'Save Study Set ($validCount Cards)',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAIEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: StudyBuddyColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                size: 48,
+                color: StudyBuddyColors.primary,
+              ),
+            ).animate().scale(
+              delay: 200.ms,
+              duration: 600.ms,
+              curve: Curves.elasticOut,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Let AI do the work!',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: StudyBuddyColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Generate flashcards instantly from your topic. No manual typing needed.',
+              style: TextStyle(
+                fontSize: 16,
+                color: StudyBuddyColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: _generateWithAI,
+                icon: const Icon(Icons.bolt_rounded),
+                label: const Text(
+                  'Generate with AI',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: StudyBuddyColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  shadowColor: StudyBuddyColors.primary.withValues(alpha: 0.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: StudyBuddyDecorations.borderRadiusFull,
+                  ),
+                ),
+              ),
+            ).animate().shimmer(delay: 1000.ms, duration: 1500.ms),
+            const SizedBox(height: 24),
+            TextButton.icon(
+              onPressed: _addFlashcard,
+              icon: const Icon(Icons.edit_note_rounded, size: 18),
+              label: const Text('Create Manually'),
+              style: TextButton.styleFrom(
+                foregroundColor: StudyBuddyColors.textSecondary,
+              ),
+            ),
+          ],
         ),
       ),
     );

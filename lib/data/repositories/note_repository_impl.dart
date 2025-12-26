@@ -20,6 +20,25 @@ class NoteRepositoryImpl implements NoteRepository {
   String get _currentUserId => _auth.currentUser?.uid ?? '';
 
   @override
+  Future<Result<int>> getNoteCount(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_collection)
+          .where('userId', isEqualTo: userId)
+          .count()
+          .get();
+
+      return Success(snapshot.count ?? 0);
+    } on FirebaseException catch (e) {
+      return Err(
+        NetworkFailure(message: e.message ?? 'Firestore error', code: e.code),
+      );
+    } catch (e) {
+      return Err(NetworkFailure(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Result<List<Note>>> getNotes(String userId) async {
     try {
       final snapshot = await _firestore

@@ -1,9 +1,9 @@
 /// Quiz Repository Implementation.
 /// Concrete implementation of QuizRepository interface using Firebase Firestore.
-/// 
+///
 /// Layer: Data
 /// Responsibility: Data operations for quizzes and quiz attempts via Firestore.
-/// 
+///
 /// Firestore Collections Used:
 /// - quizzes: Quiz definitions with questions
 /// - quiz_attempts: Student quiz attempt records
@@ -15,10 +15,12 @@ import 'package:studnet_ai_buddy/core/errors/failures.dart';
 import 'package:studnet_ai_buddy/core/utils/result.dart';
 import 'package:studnet_ai_buddy/domain/entities/quiz.dart';
 import 'package:studnet_ai_buddy/domain/repositories/quiz_repository.dart';
+import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
 
 class QuizRepositoryImpl implements QuizRepository {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
+  final AIMentorService _aiService;
 
   // Firestore collection names (per schema)
   static const String _quizzesCollection = 'quizzes';
@@ -27,8 +29,10 @@ class QuizRepositoryImpl implements QuizRepository {
   QuizRepositoryImpl({
     required FirebaseFirestore firestore,
     required FirebaseAuth auth,
-  })  : _firestore = firestore,
-        _auth = auth;
+    required AIMentorService aiService,
+  }) : _firestore = firestore,
+       _auth = auth,
+       _aiService = aiService;
 
   String get _currentStudentId => _auth.currentUser?.uid ?? '';
 
@@ -55,10 +59,12 @@ class QuizRepositoryImpl implements QuizRepository {
 
       return Success(quiz);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to fetch diagnostic quiz: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to fetch diagnostic quiz: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -90,19 +96,48 @@ class QuizRepositoryImpl implements QuizRepository {
           .get();
 
       if (querySnapshot.docs.isEmpty) {
-        // Fallback: get any quiz for the subject
+        // Fallback 1: Try any quiz for the subject
         final fallbackSnapshot = await _firestore
             .collection(_quizzesCollection)
             .where('subjectId', isEqualTo: subjectId)
             .limit(1)
             .get();
 
-        if (fallbackSnapshot.docs.isEmpty) {
-          return const Success([]);
+        if (fallbackSnapshot.docs.isNotEmpty) {
+          final quiz = _mapDocumentToQuiz(fallbackSnapshot.docs.first);
+          return Success(quiz.questions.take(count).toList());
         }
 
-        final quiz = _mapDocumentToQuiz(fallbackSnapshot.docs.first);
-        return Success(quiz.questions.take(count).toList());
+        // Fallback 2: Generate using AI
+        try {
+          final aiQuestions = await _aiService.generateQuizQuestions(
+            subject: subjectId, // Using subjectId as subject name for now
+            topic: topic ?? 'General',
+            difficulty: difficultyString,
+            count: count,
+          );
+
+          final generatedQuestions = aiQuestions
+              .map(
+                (q) => QuizQuestion(
+                  id:
+                      DateTime.now().millisecondsSinceEpoch.toString() +
+                      q.hashCode.toString(),
+                  questionText: q['text'] ?? 'AI Generated Question',
+                  options: List<String>.from(q['options'] ?? []),
+                  correctOptionIndex: q['correctOptionIndex'] ?? 0,
+                  explanation: q['explanation'],
+                  difficulty: targetDifficulty,
+                  selectedOptionIndex: null,
+                ),
+              )
+              .toList();
+
+          return Success(generatedQuestions);
+        } catch (aiError) {
+          // If AI fails, return empty list
+          return const Success([]);
+        }
       }
 
       // Collect questions from matching quizzes
@@ -116,10 +151,12 @@ class QuizRepositoryImpl implements QuizRepository {
       final selectedQuestions = allQuestions.take(count).toList();
       return Success(selectedQuestions);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to fetch adaptive questions: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to fetch adaptive questions: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -133,9 +170,9 @@ class QuizRepositoryImpl implements QuizRepository {
   Future<Result<void>> saveQuizResult(Quiz quiz) async {
     try {
       if (quiz.result == null) {
-        return const Err(ValidationFailure(
-          message: 'Cannot save quiz without result',
-        ));
+        return const Err(
+          ValidationFailure(message: 'Cannot save quiz without result'),
+        );
       }
 
       final attemptData = _mapQuizToAttemptDocument(quiz);
@@ -144,10 +181,12 @@ class QuizRepositoryImpl implements QuizRepository {
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to save quiz result: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to save quiz result: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -180,10 +219,12 @@ class QuizRepositoryImpl implements QuizRepository {
 
       return Success(quizzes);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to fetch quiz history: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to fetch quiz history: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -194,7 +235,7 @@ class QuizRepositoryImpl implements QuizRepository {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Maps Firestore quiz document to Quiz domain entity.
-  /// 
+  ///
   /// Firestore schema (quizzes):
   /// - quizId: string
   /// - subjectId: string
@@ -207,7 +248,12 @@ class QuizRepositoryImpl implements QuizRepository {
 
     final questionsData = data['questions'] as List<dynamic>? ?? [];
     final questions = questionsData
-        .map((q) => _mapDocumentToQuestion(q as Map<String, dynamic>, data['difficulty'] as String?))
+        .map(
+          (q) => _mapDocumentToQuestion(
+            q as Map<String, dynamic>,
+            data['difficulty'] as String?,
+          ),
+        )
         .toList();
 
     return Quiz(
@@ -223,14 +269,18 @@ class QuizRepositoryImpl implements QuizRepository {
   }
 
   /// Maps embedded question data to QuizQuestion domain entity.
-  /// 
+  ///
   /// Firestore schema (questions array item):
   /// - questionId: string
   /// - text: string
   /// - options: array of strings
   /// - correctAnswerIndex: int
-  QuizQuestion _mapDocumentToQuestion(Map<String, dynamic> data, String? difficultyStr) {
-    final options = (data['options'] as List<dynamic>?)
+  QuizQuestion _mapDocumentToQuestion(
+    Map<String, dynamic> data,
+    String? difficultyStr,
+  ) {
+    final options =
+        (data['options'] as List<dynamic>?)
             ?.map((o) => o.toString())
             .toList() ??
         [];
@@ -247,7 +297,7 @@ class QuizRepositoryImpl implements QuizRepository {
   }
 
   /// Maps quiz attempt document to Quiz entity with result.
-  /// 
+  ///
   /// Firestore schema (quiz_attempts):
   /// - attemptId: string
   /// - studentId: string
@@ -257,7 +307,9 @@ class QuizRepositoryImpl implements QuizRepository {
   /// - confidenceLevel: int (1-5)
   /// - answers: array of {questionId, selectedIndex}
   /// - completedAt: timestamp
-  Future<Quiz?> _mapAttemptToQuiz(DocumentSnapshot<Map<String, dynamic>> doc) async {
+  Future<Quiz?> _mapAttemptToQuiz(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
     final data = doc.data()!;
 
     final quizId = data['quizId'] as String?;
@@ -276,7 +328,8 @@ class QuizRepositoryImpl implements QuizRepository {
 
     final quiz = _mapDocumentToQuiz(quizDoc);
     final completedAt = (data['completedAt'] as Timestamp?)?.toDate();
-    final scorePercentage = (data['scorePercentage'] as num?)?.toDouble() ?? 0.0;
+    final scorePercentage =
+        (data['scorePercentage'] as num?)?.toDouble() ?? 0.0;
 
     // Map answers to questions
     final answersData = data['answers'] as List<dynamic>? ?? [];
@@ -322,7 +375,8 @@ class QuizRepositoryImpl implements QuizRepository {
   /// Creates a minimal Quiz from attempt data when original quiz is unavailable.
   Quiz _createQuizFromAttempt(Map<String, dynamic> data, String attemptId) {
     final completedAt = (data['completedAt'] as Timestamp?)?.toDate();
-    final scorePercentage = (data['scorePercentage'] as num?)?.toDouble() ?? 0.0;
+    final scorePercentage =
+        (data['scorePercentage'] as num?)?.toDouble() ?? 0.0;
 
     final result = QuizResult(
       correctAnswers: 0,
@@ -352,14 +406,18 @@ class QuizRepositoryImpl implements QuizRepository {
   Map<String, dynamic> _mapQuizToAttemptDocument(Quiz quiz) {
     final answers = quiz.questions
         .where((q) => q.selectedOptionIndex != null)
-        .map((q) => {
-              'questionId': q.id,
-              'selectedIndex': int.tryParse(q.selectedOptionIndex!) ?? 0,
-            })
+        .map(
+          (q) => {
+            'questionId': q.id,
+            'selectedIndex': int.tryParse(q.selectedOptionIndex!) ?? 0,
+          },
+        )
         .toList();
 
     // Calculate confidence level (1-5) from score
-    final confidenceLevel = _calculateConfidenceLevel(quiz.result?.scorePercentage ?? 0);
+    final confidenceLevel = _calculateConfidenceLevel(
+      quiz.result?.scorePercentage ?? 0,
+    );
 
     return {
       'attemptId': '${quiz.id}_${DateTime.now().millisecondsSinceEpoch}',

@@ -1,6 +1,6 @@
 /// Subject Entity.
 /// Represents an academic subject/course the student is enrolled in.
-/// 
+///
 /// Layer: Domain
 /// Responsibility: Subject metadata and credit information.
 /// Inputs: Academic catalog data.
@@ -13,6 +13,7 @@ class Subject {
   final String code; // e.g., "CS-301"
   final int creditHours;
   final SubjectDifficulty difficulty;
+  final String colorHex;
   final List<String> topicIds;
 
   const Subject({
@@ -21,13 +22,10 @@ class Subject {
     required this.code,
     required this.creditHours,
     required this.difficulty,
+    this.colorHex = '#4A90E2', // Default blue
     required this.topicIds,
   });
 }
 
 /// Difficulty level assigned to subjects for AI planning.
-enum SubjectDifficulty {
-  introductory,
-  intermediate,
-  advanced,
-}
+enum SubjectDifficulty { introductory, intermediate, advanced }

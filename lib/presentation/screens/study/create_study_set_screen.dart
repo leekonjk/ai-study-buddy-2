@@ -6,7 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
-import 'package:studnet_ai_buddy/presentation/screens/study/add_flashcards_screen.dart';
+
+import 'package:studnet_ai_buddy/di/service_locator.dart';
+import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
+import 'package:studnet_ai_buddy/domain/entities/subject.dart';
+import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 
 /// Screen to create a new study set.
 class CreateStudySetScreen extends StatefulWidget {
@@ -20,6 +24,11 @@ class _CreateStudySetScreenState extends State<CreateStudySetScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+
+  List<Subject> _enrolledSubjects = [];
+  String? _selectedSubjectId;
+  bool _isLoadingSubjects = true;
+
   String _selectedCategory = 'General';
   bool _isPrivate = true;
 
@@ -52,6 +61,25 @@ class _CreateStudySetScreenState extends State<CreateStudySetScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadSubjects();
+  }
+
+  Future<void> _loadSubjects() async {
+    final result = await getIt<AcademicRepository>().getEnrolledSubjects();
+    if (mounted) {
+      setState(() {
+        _enrolledSubjects = result.fold(
+          onSuccess: (subjects) => subjects,
+          onFailure: (_) => [],
+        );
+        _isLoadingSubjects = false;
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
@@ -61,15 +89,15 @@ class _CreateStudySetScreenState extends State<CreateStudySetScreen> {
   void _proceedToAddFlashcards() {
     if (!_formKey.currentState!.validate()) return;
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AddFlashcardsScreen(
-          studySetTitle: _titleController.text.trim(),
-          studySetCategory: _selectedCategory,
-          studySetDescription: _descriptionController.text.trim(),
-          isPrivate: _isPrivate,
-        ),
-      ),
+    Navigator.of(context).pushNamed(
+      AppRoutes.addFlashcards,
+      arguments: {
+        'studySetTitle': _titleController.text.trim(),
+        'studySetCategory': _selectedCategory,
+        'studySetDescription': _descriptionController.text.trim(),
+        'isPrivate': _isPrivate,
+        'subjectId': _selectedSubjectId, // Pass the selected subject ID
+      },
     );
   }
 
@@ -104,8 +132,20 @@ class _CreateStudySetScreenState extends State<CreateStudySetScreen> {
                             .slideX(begin: -0.1, end: 0),
                         const SizedBox(height: 24),
 
+                        // Subject selection (New)
+                        _buildSectionLabel('Subject', Icons.book_rounded),
+                        const SizedBox(height: 12),
+                        _buildSubjectSelector()
+                            .animate()
+                            .fadeIn(delay: 150.ms)
+                            .slideX(begin: -0.1, end: 0),
+                        const SizedBox(height: 24),
+
                         // Category selection
-                        _buildSectionLabel('Category', Icons.category_rounded),
+                        _buildSectionLabel(
+                          'Category (Optional)',
+                          Icons.category_rounded,
+                        ),
                         const SizedBox(height: 12),
                         _buildCategorySelector()
                             .animate()
@@ -234,6 +274,69 @@ class _CreateStudySetScreenState extends State<CreateStudySetScreen> {
           return null;
         },
         onChanged: (_) => setState(() {}),
+      ),
+    );
+  }
+
+  Widget _buildSubjectSelector() {
+    if (_isLoadingSubjects) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_enrolledSubjects.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: StudyBuddyColors.cardBackground,
+          borderRadius: StudyBuddyDecorations.borderRadiusM,
+          border: Border.all(color: StudyBuddyColors.border),
+        ),
+        child: const Text(
+          'No enrolled subjects found. Check your profile.',
+          style: TextStyle(color: StudyBuddyColors.textSecondary),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: StudyBuddyColors.cardBackground,
+        borderRadius: StudyBuddyDecorations.borderRadiusL,
+        border: Border.all(color: StudyBuddyColors.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedSubjectId,
+          hint: const Text(
+            'Select a Subject',
+            style: TextStyle(color: StudyBuddyColors.textTertiary),
+          ),
+          isExpanded: true,
+          dropdownColor: StudyBuddyColors.cardBackground,
+          icon: const Icon(
+            Icons.arrow_drop_down_rounded,
+            color: StudyBuddyColors.primary,
+          ),
+          items: _enrolledSubjects.map((subject) {
+            return DropdownMenuItem<String>(
+              value: subject.id,
+              child: Text(
+                subject.name,
+                style: const TextStyle(
+                  color: StudyBuddyColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedSubjectId = value;
+              // Auto-select category if possible or relevant
+            });
+          },
+        ),
       ),
     );
   }

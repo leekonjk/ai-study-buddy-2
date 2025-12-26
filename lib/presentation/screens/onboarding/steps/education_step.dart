@@ -20,6 +20,7 @@ class EducationStep extends StatefulWidget {
 class _EducationStepState extends State<EducationStep> {
   final _universityController = TextEditingController();
   final _programController = TextEditingController();
+  int? _selectedSemester;
 
   @override
   void initState() {
@@ -91,6 +92,42 @@ class _EducationStepState extends State<EducationStep> {
               ),
             ),
           ),
+          const SizedBox(height: 16),
+          // Semester Dropdown
+          DropdownButtonFormField<int>(
+            // value: _selectedSemester, // Deprecated, using initialValue and FormField state
+            initialValue: _selectedSemester,
+            decoration: StudyBuddyDecorations.inputDecoration(
+              hintText: 'Current Semester',
+              prefixIcon: const Icon(
+                Icons.calendar_today_rounded,
+                color: StudyBuddyColors.textSecondary,
+              ),
+            ),
+            items: List.generate(8, (index) => index + 1)
+                .map(
+                  (s) => DropdownMenuItem(
+                    value: s,
+                    child: Text(
+                      'Semester $s',
+                      style: const TextStyle(
+                        color: StudyBuddyColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: (val) {
+              setState(() {
+                _selectedSemester = val;
+              });
+            },
+            dropdownColor: StudyBuddyColors.cardBackground,
+            icon: const Icon(
+              Icons.arrow_drop_down_rounded,
+              color: StudyBuddyColors.textSecondary,
+            ),
+          ),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -121,10 +158,12 @@ class _EducationStepState extends State<EducationStep> {
 
   void _handleNext() {
     if (_universityController.text.trim().isNotEmpty &&
-        _programController.text.trim().isNotEmpty) {
+        _programController.text.trim().isNotEmpty &&
+        _selectedSemester != null) {
       final controller = OnboardingStepController.of(context);
       controller?.onUpdateData('university', _universityController.text.trim());
       controller?.onUpdateData('program', _programController.text.trim());
+      controller?.onUpdateData('semester', _selectedSemester);
       controller?.onNext();
     }
   }

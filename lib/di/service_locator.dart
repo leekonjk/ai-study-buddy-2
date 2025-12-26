@@ -24,6 +24,9 @@ import 'package:studnet_ai_buddy/domain/repositories/study_plan_repository.dart'
 import 'package:studnet_ai_buddy/domain/repositories/study_set_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/note_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/flashcard_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/achievement_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/file_repository.dart'; // Added
+
 import 'package:studnet_ai_buddy/domain/repositories/resource_repository.dart';
 
 // Repository Implementations
@@ -35,6 +38,8 @@ import 'package:studnet_ai_buddy/data/repositories/study_set_repository_impl.dar
 import 'package:studnet_ai_buddy/data/repositories/note_repository_impl.dart';
 import 'package:studnet_ai_buddy/data/repositories/flashcard_repository_impl.dart';
 import 'package:studnet_ai_buddy/data/repositories/resource_repository_impl.dart';
+import 'package:studnet_ai_buddy/data/repositories/achievement_repository_impl.dart';
+import 'package:studnet_ai_buddy/data/repositories/file_repository_impl.dart'; // Added
 
 // Domain Services
 import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
@@ -47,6 +52,7 @@ import 'package:studnet_ai_buddy/domain/services/study_planner_service.dart';
 
 // Domain Service Implementations
 import 'package:studnet_ai_buddy/domain/services/impl/ai_mentor_service_impl.dart';
+import 'package:studnet_ai_buddy/domain/services/impl/achievement_service_impl.dart';
 import 'package:studnet_ai_buddy/domain/services/impl/knowledge_estimation_service_impl.dart';
 import 'package:studnet_ai_buddy/domain/services/impl/risk_analysis_service_impl.dart';
 import 'package:studnet_ai_buddy/domain/services/impl/study_planner_service_impl.dart';
@@ -62,6 +68,10 @@ import 'package:studnet_ai_buddy/presentation/viewmodels/onboarding/onboarding_v
 import 'package:studnet_ai_buddy/presentation/viewmodels/profile/profile_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/quiz/quiz_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/planner/ai_planner_viewmodel.dart';
+import 'package:studnet_ai_buddy/presentation/viewmodels/notes/notes_viewmodel.dart';
+
+import 'package:studnet_ai_buddy/presentation/viewmodels/library/library_viewmodel.dart'; // Added
+import 'package:studnet_ai_buddy/presentation/viewmodels/statistics/statistics_viewmodel.dart';
 
 /// Global service locator instance.
 final GetIt getIt = GetIt.instance;
@@ -127,6 +137,7 @@ void _registerRepositories() {
     () => QuizRepositoryImpl(
       firestore: getIt<FirebaseFirestore>(),
       auth: getIt<FirebaseAuth>(),
+      aiService: getIt<AIMentorService>(),
     ),
   );
 
@@ -177,6 +188,22 @@ void _registerRepositories() {
       auth: getIt<FirebaseAuth>(),
     ),
   );
+
+  // AchievementRepository
+  getIt.registerLazySingleton<AchievementRepository>(
+    () => AchievementRepositoryImpl(
+      firestore: getIt<FirebaseFirestore>(),
+      auth: getIt<FirebaseAuth>(),
+    ),
+  );
+
+  // FileRepository
+  getIt.registerLazySingleton<FileRepository>(
+    () => FileRepositoryImpl(
+      storage: null, // Default
+      firestore: getIt<FirebaseFirestore>(),
+    ),
+  );
 }
 
 /// Registers domain services as lazy singletons.
@@ -199,6 +226,13 @@ void _registerDomainServices() {
 
   // AIMentorService
   getIt.registerLazySingleton<AIMentorService>(() => AIMentorServiceImpl());
+
+  // AchievementService
+  getIt.registerLazySingleton<AchievementService>(
+    () => AchievementService(
+      achievementRepository: getIt<AchievementRepository>(),
+    ),
+  );
 }
 
 /// Registers ViewModels as factories (new instance each time).
@@ -222,6 +256,7 @@ void _registerViewModels() {
   getIt.registerFactory<QuizViewModel>(
     () => QuizViewModel(
       quizRepository: getIt<QuizRepository>(),
+      flashcardRepository: getIt<FlashcardRepository>(),
       knowledgeEstimationService: getIt<KnowledgeEstimationService>(),
     ),
   );
@@ -230,12 +265,16 @@ void _registerViewModels() {
   getIt.registerFactory<FocusSessionViewModel>(
     () => FocusSessionViewModel(
       focusSessionRepository: getIt<FocusSessionRepository>(),
+      achievementRepository: getIt<AchievementRepository>(),
     ),
   );
 
   // AIMentorViewModel
   getIt.registerFactory<AIMentorViewModel>(
-    () => AIMentorViewModel(aiMentorService: getIt<AIMentorService>()),
+    () => AIMentorViewModel(
+      aiMentorService: getIt<AIMentorService>(),
+      academicRepository: getIt<AcademicRepository>(),
+    ),
   );
 
   // AIPlannerViewModel
@@ -243,6 +282,7 @@ void _registerViewModels() {
     () => AIPlannerViewModel(
       studyPlanRepository: getIt<StudyPlanRepository>(),
       academicRepository: getIt<AcademicRepository>(),
+      aiMentorService: getIt<AIMentorService>(),
     ),
   );
 
@@ -251,6 +291,32 @@ void _registerViewModels() {
     () => ProfileViewModel(
       academicRepository: getIt<AcademicRepository>(),
       focusSessionRepository: getIt<FocusSessionRepository>(),
+      achievementRepository: getIt<AchievementRepository>(),
+      noteRepository: getIt<NoteRepository>(),
+      notificationService: getIt<NotificationService>(), // Added
+      auth: getIt<FirebaseAuth>(),
+    ),
+  );
+
+  // NotesViewModel
+  getIt.registerFactory<NotesViewModel>(
+    () => NotesViewModel(
+      noteRepository: getIt<NoteRepository>(),
+      auth: getIt<FirebaseAuth>(),
+    ),
+  );
+
+  // StatisticsViewModel
+  getIt.registerFactory<StatisticsViewModel>(
+    () => StatisticsViewModel(
+      focusSessionRepository: getIt<FocusSessionRepository>(),
+    ),
+  );
+
+  // LibraryViewModel
+  getIt.registerFactory<LibraryViewModel>(
+    () => LibraryViewModel(
+      fileRepository: getIt<FileRepository>(),
       auth: getIt<FirebaseAuth>(),
     ),
   );
@@ -285,3 +351,4 @@ QuizViewModel get quizViewModel => getIt<QuizViewModel>();
 FocusSessionViewModel get focusSessionViewModel =>
     getIt<FocusSessionViewModel>();
 AIMentorViewModel get aiMentorViewModel => getIt<AIMentorViewModel>();
+LibraryViewModel get libraryViewModel => getIt<LibraryViewModel>();

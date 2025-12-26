@@ -11,10 +11,21 @@ import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
-import 'package:studnet_ai_buddy/domain/entities/resource.dart';
-import 'package:studnet_ai_buddy/domain/repositories/resource_repository.dart';
-import 'package:studnet_ai_buddy/domain/services/file_upload_service.dart';
+
+// import 'package:studnet_ai_buddy/domain/repositories/resource_repository.dart'; // Removed
+// import 'package:studnet_ai_buddy/domain/services/file_upload_service.dart'; // Removed
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:studnet_ai_buddy/domain/repositories/note_repository.dart';
+import 'package:studnet_ai_buddy/domain/entities/note.dart';
+import 'package:studnet_ai_buddy/presentation/viewmodels/library/library_viewmodel.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // For Timestamp usage
+import 'package:studnet_ai_buddy/presentation/widgets/cards/modern_file_card.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/empty_files_state.dart';
+
+import 'package:studnet_ai_buddy/domain/entities/study_set.dart';
+
+import 'package:studnet_ai_buddy/presentation/widgets/badges/subject_badge.dart';
 
 /// Library screen with tabs for Study Sets, Notes, and Files.
 class LibraryScreen extends StatefulWidget {
@@ -27,14 +38,25 @@ class LibraryScreen extends StatefulWidget {
 class _LibraryScreenState extends State<LibraryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late LibraryViewModel _libraryViewModel;
   List<StudySet> _studySets = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _libraryViewModel = getIt<LibraryViewModel>();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {}); // Rebuild to update FAB
+      }
+    });
     _loadStudySets();
+    // Load files when screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _libraryViewModel.loadFiles();
+    });
   }
 
   Future<void> _loadStudySets() async {
@@ -46,7 +68,21 @@ class _LibraryScreenState extends State<LibraryScreen>
           _isLoading = false;
         });
       },
-      onFailure: (_) {
+      onFailure: (failure) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to load study sets: ${failure.message}'),
+              backgroundColor: StudyBuddyColors.error,
+              duration: const Duration(seconds: 5),
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: _loadStudySets,
+              ),
+            ),
+          );
+        }
         setState(() {
           _studySets = [];
           _isLoading = false;
@@ -63,9 +99,10 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   @override
   Widget build(BuildContext context) {
-    return GradientScaffold(
-      body: SafeArea(
-        child: Column(
+    return ChangeNotifierProvider.value(
+      value: _libraryViewModel,
+      child: GradientScaffold(
+        body: Column(
           children: [
             // Header
             Padding(
@@ -171,8 +208,13 @@ class _LibraryScreenState extends State<LibraryScreen>
             ),
           ],
         ),
+        floatingActionButton: Padding(
+          padding: const EdgeInsets.only(
+            bottom: 80,
+          ), // Increased to clear bottom nav
+          child: _buildFAB(),
+        ),
       ),
-      floatingActionButton: _buildFAB(),
     );
   }
 
@@ -193,7 +235,7 @@ class _LibraryScreenState extends State<LibraryScreen>
       onRefresh: _loadStudySets,
       color: StudyBuddyColors.primary,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
         itemCount: _studySets.length,
         itemBuilder: (context, index) {
           final set = _studySets[index];
@@ -217,54 +259,168 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 
   Widget _buildNotesTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: StudyBuddyColors.secondary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(
-              Icons.note_alt_rounded,
-              size: 40,
-              color: StudyBuddyColors.secondary,
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Your Notes',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: StudyBuddyColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Quick notes will appear here',
-            style: TextStyle(
-              fontSize: 14,
-              color: StudyBuddyColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.notes),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: StudyBuddyColors.secondary,
-              side: const BorderSide(color: StudyBuddyColors.secondary),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
-            icon: const Icon(Icons.arrow_forward_rounded),
-            label: const Text('Go to Notes'),
-          ),
-        ],
+    return FutureBuilder(
+      future: getIt<NoteRepository>().getNoteCount(
+        FirebaseAuth.instance.currentUser?.uid ?? '',
       ),
+      builder: (context, snapshot) {
+        // We can use a StreamBuilder here if we want real-time updates,
+        // but for the library summary, we might just want to show recent notes.
+        // Let's use the stream from NoteRepository
+        return StreamBuilder<List<Note>>(
+          stream: getIt<NoteRepository>().watchNotes(
+            FirebaseAuth.instance.currentUser?.uid ?? '',
+          ),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final notes = snapshot.data ?? [];
+
+            if (notes.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: StudyBuddyColors.secondary.withValues(
+                          alpha: 0.15,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(
+                        Icons.note_alt_rounded,
+                        size: 40,
+                        color: StudyBuddyColors.secondary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Your Notes',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: StudyBuddyColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'No notes yet. Start taking notes anytime!',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: StudyBuddyColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    OutlinedButton.icon(
+                      onPressed: () => _showCreateNoteBottomSheet(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: StudyBuddyColors.secondary,
+                        side: const BorderSide(
+                          color: StudyBuddyColors.secondary,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Create Note'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(24),
+              itemCount: notes.length,
+              itemBuilder: (context, index) {
+                final note = notes[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Material(
+                    color: StudyBuddyColors.cardBackground,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      onTap: () {
+                        // Navigate to note details/edit
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.noteEditor,
+                          arguments: note,
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: StudyBuddyColors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    note.title.isNotEmpty
+                                        ? note.title
+                                        : 'Untitled Note',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: StudyBuddyColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                if (note.subject.isNotEmpty &&
+                                    note.subject != 'General')
+                                  SubjectBadge(
+                                    subjectName: note.subject,
+                                    compact: true,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              note.content,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: StudyBuddyColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Created: ${_formatDate(note.createdAt)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: StudyBuddyColors.textTertiary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -272,198 +428,86 @@ class _LibraryScreenState extends State<LibraryScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildFilesTab() {
-    return FutureBuilder(
-      future: getIt<ResourceRepository>().getResources(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    return Consumer<LibraryViewModel>(
+      builder: (context, viewModel, child) {
+        if (viewModel.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+        if (viewModel.errorMessage != null) {
+          return Center(child: Text('Error: ${viewModel.errorMessage}'));
         }
 
-        final result = snapshot.data;
-        List<Resource> files = [];
-
-        if (result != null) {
-          result.fold(
-            onSuccess: (list) => files = list,
-            onFailure: (_) => files = [],
-          );
-        }
+        final files = viewModel.files;
 
         if (files.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: StudyBuddyColors.accent.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.cloud_upload_rounded,
-                    size: 40,
-                    color: StudyBuddyColors.accent,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Upload Study Materials',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: StudyBuddyColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'PDFs, documents, and images',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: StudyBuddyColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: _showUploadSheet,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: StudyBuddyColors.accent,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                  ),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text('Upload File'),
-                ),
-              ],
-            ),
-          );
+          return EmptyFilesState(onUploadPressed: _showUploadSheet);
         }
 
-        return Stack(
-          children: [
-            RefreshIndicator(
-              onRefresh: () async {
-                setState(() {});
+        return GridView.builder(
+          padding: const EdgeInsets.all(16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.6,
+          ),
+          itemCount: files.length,
+          itemBuilder: (context, index) {
+            final file = files[index];
+            final fileName = file['name'] ?? 'Unnamed File';
+            final fileType = file['type'] ?? 'unknown';
+            final fileSizeBytes = file['size'] ?? 0;
+            final uploadedAt =
+                (file['uploadedAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+            final thumbnailUrl = file['thumbnailUrl'];
+
+            return ModernFileCard(
+              fileName: fileName,
+              fileType: fileType,
+              fileSizeBytes: fileSizeBytes,
+              uploadedAt: uploadedAt,
+              thumbnailUrl: thumbnailUrl,
+              onTap: () {
+                // TODO: Implement file preview
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Opening $fileName'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               },
-              child: ListView.builder(
-                padding: const EdgeInsets.all(24),
-                itemCount: files.length,
-                itemBuilder: (context, index) {
-                  final file = files[index];
-                  return _buildFileCard(file);
-                },
-              ),
-            ),
-            Positioned(
-              bottom: 24,
-              right: 24,
-              child: FloatingActionButton(
-                onPressed: _showUploadSheet,
-                backgroundColor: StudyBuddyColors.accent,
-                child: const Icon(Icons.add_rounded, color: Colors.white),
-              ),
-            ),
-          ],
+              onDelete: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Delete File'),
+                    content: Text('Are you sure you want to delete $fileName?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                        ),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirmed == true && context.mounted) {
+                  viewModel.deleteFile(file['id'], file['storagePath']);
+                }
+              },
+            );
+          },
         );
       },
     );
-  }
-
-  Widget _buildFileCard(Resource file) {
-    IconData icon;
-    Color color;
-
-    switch (file.type) {
-      case ResourceType.pdf:
-        icon = Icons.picture_as_pdf_rounded;
-        color = Colors.red;
-        break;
-      case ResourceType.image:
-        icon = Icons.image_rounded;
-        color = Colors.blue;
-        break;
-      case ResourceType.document:
-        icon = Icons.description_rounded;
-        color = Colors.blueAccent;
-        break;
-      default:
-        icon = Icons.insert_drive_file_rounded;
-        color = Colors.grey;
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: StudyBuddyColors.cardBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: StudyBuddyColors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  file.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: StudyBuddyColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _formatFileSize(file.sizeBytes),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: StudyBuddyColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.download_rounded,
-              color: StudyBuddyColors.textSecondary,
-            ),
-            onPressed: () {
-              // Implement download or open URL
-              // launchUrl(Uri.parse(file.url)); // requires url_launcher
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text("Downloading...")));
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
   void _showUploadSheet() {
@@ -612,90 +656,43 @@ class _LibraryScreenState extends State<LibraryScreen>
       case 'doc':
         fileType = FileType.custom;
         allowedExtensions = ['doc', 'docx', 'txt'];
+        break;
       default:
         fileType = FileType.any;
+        break;
     }
 
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: fileType,
-        allowedExtensions: allowedExtensions,
-        allowMultiple: false, // Simplify to single file for now
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Uploading...'),
+            backgroundColor: StudyBuddyColors.primary,
+          ),
+        );
 
-      if (result != null && result.files.isNotEmpty) {
-        final platformFile = result.files.first;
-        final path = platformFile.path;
-        final name = platformFile.name;
-
-        if (path == null) return;
+        // Use ViewModel directly since we have the instance
+        final success = await _libraryViewModel.uploadFile(
+          type: fileType,
+          allowedExtensions: allowedExtensions,
+        );
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Uploading...'),
-              backgroundColor: StudyBuddyColors.primary,
-              duration: Duration(seconds: 10), // Long duration while uploading
-            ),
-          );
-        }
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-        // Upload
-        try {
-          final uploadResult = await getIt<FileUploadService>().uploadFile(
-            filePath: path,
-            fileName: name,
-            onProgress: (progress) {
-              // Update progress if UI supports it
-            },
-          );
-
-          // Save Metadata
-          final resource = Resource(
-            id: uploadResult.fileId,
-            userId: FirebaseAuth.instance.currentUser?.uid ?? '',
-            title: uploadResult.fileName,
-            url: uploadResult.fileUrl,
-            type: Resource.parseType(uploadResult.fileType),
-            sizeBytes: uploadResult.fileSize,
-            uploadedAt: uploadResult.uploadedAt,
-          );
-
-          final saveResult = await getIt<ResourceRepository>().saveResource(
-            resource,
-          );
-
-          saveResult.fold(
-            onSuccess: (_) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Upload Successful!'),
-                    backgroundColor: StudyBuddyColors.success,
-                  ),
-                );
-                setState(() {}); // Refresh list
-              }
-            },
-            onFailure: (f) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to save metadata: ${f.message}'),
-                    backgroundColor: StudyBuddyColors.error,
-                  ),
-                );
-              }
-            },
-          );
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Upload Successful!'),
+                backgroundColor: StudyBuddyColors.success,
+              ),
+            );
+          } else if (_libraryViewModel.errorMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Upload failed: $e'),
+                content: Text(
+                  'Upload failed: ${_libraryViewModel.errorMessage}',
+                ),
                 backgroundColor: StudyBuddyColors.error,
               ),
             );
@@ -704,9 +701,10 @@ class _LibraryScreenState extends State<LibraryScreen>
       }
     } catch (e) {
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking file: $e'),
+            content: Text('Upload failed: $e'),
             backgroundColor: StudyBuddyColors.error,
           ),
         );
@@ -756,15 +754,52 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 
   Widget _buildFAB() {
-    return FloatingActionButton.extended(
-      onPressed: () => Navigator.pushNamed(context, AppRoutes.createStudySet),
-      backgroundColor: StudyBuddyColors.primary,
-      icon: const Icon(Icons.add_rounded, color: Colors.white),
-      label: const Text(
-        'Create Set',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-      ),
+    return AnimatedBuilder(
+      animation: _tabController,
+      builder: (context, child) {
+        final index = _tabController.index;
+        String label = 'Create';
+        IconData icon = Icons.add_rounded;
+        VoidCallback onTap = () {};
+
+        switch (index) {
+          case 0: // Sets
+            label = 'Create Set';
+            onTap = () =>
+                Navigator.pushNamed(context, AppRoutes.createStudySet);
+            break;
+          case 1: // Notes
+            label = 'Create Note';
+            icon = Icons.edit_note_rounded;
+            onTap = () => Navigator.pushNamed(context, AppRoutes.notes);
+            break;
+          case 2: // Files
+            label = 'Upload File';
+            icon = Icons.upload_file_rounded;
+            onTap = _showUploadSheet;
+            break;
+        }
+
+        return FloatingActionButton.extended(
+          onPressed: onTap,
+          heroTag: 'library_fab_${_tabController.index}',
+          backgroundColor: StudyBuddyColors.primary,
+          icon: Icon(icon, color: Colors.white),
+          label: Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
+      },
     );
+  }
+
+  /// Navigates to the note editor for creating a new note
+  void _showCreateNoteBottomSheet(BuildContext context) {
+    Navigator.pushNamed(context, AppRoutes.noteEditor);
   }
 }
 

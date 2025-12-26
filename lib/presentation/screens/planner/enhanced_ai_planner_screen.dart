@@ -68,6 +68,48 @@ class _PlannerContent extends StatelessWidget {
                         color: StudyBuddyColors.textPrimary,
                       ),
                     ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () async {
+                        final viewModel = context.read<AIPlannerViewModel>();
+                        // Show confirmation dialog
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Regenerate Plan?'),
+                            content: const Text(
+                              'This will delete your current plan and generate a fresh one based on your profile.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: StudyBuddyColors.primary,
+                                ),
+                                child: const Text(
+                                  'Regenerate',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true && context.mounted) {
+                          viewModel
+                              .loadPlan(); // This will regenerate if no plan exists
+                        }
+                      },
+                      icon: const Icon(
+                        Icons.refresh_rounded,
+                        color: StudyBuddyColors.primary,
+                      ),
+                      tooltip: 'Regenerate Plan',
+                    ),
                   ],
                 ),
               ),
@@ -184,11 +226,14 @@ class _PlannerContent extends StatelessWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddTaskSheet(context),
-        backgroundColor: StudyBuddyColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Add Task', style: TextStyle(color: Colors.white)),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: FloatingActionButton.extended(
+          onPressed: () => _showAddTaskSheet(context),
+          backgroundColor: StudyBuddyColors.primary,
+          icon: const Icon(Icons.add_rounded, color: Colors.white),
+          label: const Text('Add Task', style: TextStyle(color: Colors.white)),
+        ),
       ),
     );
   }
@@ -287,87 +332,95 @@ class _PlannerContent extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: StudyBuddyColors.cardBackground,
+      child: Builder(
+        builder: (context) => InkWell(
+          onTap: () {
+            context.read<AIPlannerViewModel>().toggleTaskCompletion(task.id);
+          },
           borderRadius: StudyBuddyDecorations.borderRadiusL,
-          border: Border.all(
-            color: task.isCompleted
-                ? StudyBuddyColors.success.withValues(alpha: 0.3)
-                : StudyBuddyColors.border,
-          ),
-        ),
-        child: Row(
-          children: [
-            // Checkbox
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: StudyBuddyColors.cardBackground,
+              borderRadius: StudyBuddyDecorations.borderRadiusL,
+              border: Border.all(
                 color: task.isCompleted
-                    ? StudyBuddyColors.success
-                    : Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: task.isCompleted
-                      ? StudyBuddyColors.success
-                      : StudyBuddyColors.border,
-                  width: 2,
-                ),
+                    ? StudyBuddyColors.success.withValues(alpha: 0.3)
+                    : StudyBuddyColors.border,
               ),
-              child: task.isCompleted
-                  ? const Icon(
-                      Icons.check_rounded,
-                      size: 16,
-                      color: Colors.white,
-                    )
-                  : null,
             ),
-            const SizedBox(width: 12),
-
-            // Icon
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: StudyBuddyDecorations.borderRadiusS,
-              ),
-              child: Icon(icon, color: color, size: 20),
-            ),
-            const SizedBox(width: 12),
-
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+            child: Row(
+              children: [
+                // Checkbox
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: task.isCompleted
+                        ? StudyBuddyColors.success
+                        : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(
                       color: task.isCompleted
-                          ? StudyBuddyColors.textTertiary
-                          : StudyBuddyColors.textPrimary,
-                      decoration: task.isCompleted
-                          ? TextDecoration.lineThrough
-                          : null,
+                          ? StudyBuddyColors.success
+                          : StudyBuddyColors.border,
+                      width: 2,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    timeRange,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: StudyBuddyColors.textSecondary,
-                    ),
+                  child: task.isCompleted
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+
+                // Icon
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: StudyBuddyDecorations.borderRadiusS,
                   ),
-                ],
-              ),
+                  child: Icon(icon, color: color, size: 20),
+                ),
+                const SizedBox(width: 12),
+
+                // Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.title,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: task.isCompleted
+                              ? StudyBuddyColors.textTertiary
+                              : StudyBuddyColors.textPrimary,
+                          decoration: task.isCompleted
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        timeRange,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: StudyBuddyColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

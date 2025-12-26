@@ -14,6 +14,7 @@ import 'package:studnet_ai_buddy/presentation/widgets/common/lottie_loading.dart
 
 class QuizScreen extends StatelessWidget {
   final String? subjectId;
+  final String? studySetId; // Added
   final String? topic;
   final int? questionCount;
   final double? difficulty;
@@ -21,6 +22,7 @@ class QuizScreen extends StatelessWidget {
   const QuizScreen({
     super.key,
     this.subjectId,
+    this.studySetId,
     this.topic,
     this.questionCount,
     this.difficulty,
@@ -31,7 +33,9 @@ class QuizScreen extends StatelessWidget {
     return ChangeNotifierProvider<QuizViewModel>(
       create: (_) {
         final vm = getIt<QuizViewModel>();
-        if (subjectId != null) {
+        if (studySetId != null) {
+          vm.loadStudySetQuiz(studySetId!);
+        } else if (subjectId != null) {
           if (topic != null || difficulty != null) {
             vm.loadCustomQuiz(
               subjectId: subjectId!,

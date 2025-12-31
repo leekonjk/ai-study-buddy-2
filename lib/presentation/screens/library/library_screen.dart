@@ -36,7 +36,7 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late TabController _tabController;
   late LibraryViewModel _libraryViewModel;
   String _searchQuery = '';
@@ -52,6 +52,9 @@ class _LibraryScreenState extends State<LibraryScreen>
     'Coding',
     'Other',
   ];
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -77,6 +80,7 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     return ChangeNotifierProvider.value(
       value: _libraryViewModel,
       child: GradientScaffold(

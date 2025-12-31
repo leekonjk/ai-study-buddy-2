@@ -12,11 +12,21 @@ import 'package:studnet_ai_buddy/domain/entities/study_set.dart'; // Added
 import 'package:studnet_ai_buddy/domain/repositories/study_set_repository.dart'; // Added
 
 /// Explore screen for discovering study content.
-class ExploreScreen extends StatelessWidget {
+class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
 
   @override
+  State<ExploreScreen> createState() => _ExploreScreenState();
+}
+
+class _ExploreScreenState extends State<ExploreScreen>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     return GradientScaffold(
       body: SafeArea(
         child: Column(

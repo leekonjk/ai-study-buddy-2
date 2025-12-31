@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/ai/lottie_typing_indicator.dart';
 
 /// AI Mentor chat screen with suggested prompts.
 class AIMentorScreen extends StatefulWidget {
@@ -345,28 +346,7 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
   }
 
   Widget _buildTypingIndicator() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: StudyBuddyColors.cardBackground,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: StudyBuddyColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _TypingDot(delay: 0),
-            const SizedBox(width: 4),
-            _TypingDot(delay: 150),
-            const SizedBox(width: 4),
-            _TypingDot(delay: 300),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(duration: 200.ms);
+    return const LottieTypingIndicator();
   }
 
   Widget _buildInputField() {
@@ -430,65 +410,6 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Typing indicator dot widget.
-class _TypingDot extends StatefulWidget {
-  final int delay;
-  const _TypingDot({required this.delay});
-
-  @override
-  State<_TypingDot> createState() => _TypingDotState();
-}
-
-class _TypingDotState extends State<_TypingDot>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    _animation = Tween<double>(
-      begin: 0,
-      end: 1,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-
-    Future.delayed(Duration(milliseconds: widget.delay), () {
-      if (mounted) {
-        _controller.repeat(reverse: true);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: StudyBuddyColors.primary.withValues(
-              alpha: 0.3 + (_animation.value * 0.7),
-            ),
-            shape: BoxShape.circle,
-          ),
-        );
-      },
     );
   }
 }

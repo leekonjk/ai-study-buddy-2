@@ -23,11 +23,24 @@ class EnhancedAIPlannerScreen extends StatefulWidget {
       _EnhancedAIPlannerScreenState();
 }
 
-class _EnhancedAIPlannerScreenState extends State<EnhancedAIPlannerScreen> {
+class _EnhancedAIPlannerScreenState extends State<EnhancedAIPlannerScreen>
+    with AutomaticKeepAliveClientMixin {
+  late final AIPlannerViewModel _viewModel;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel = getIt<AIPlannerViewModel>()..loadPlan();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<AIPlannerViewModel>(
-      create: (_) => getIt<AIPlannerViewModel>()..loadPlan(),
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    return ChangeNotifierProvider<AIPlannerViewModel>.value(
+      value: _viewModel,
       child: const _PlannerContent(),
     );
   }

@@ -8,6 +8,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/cards/enhanced_stat_card.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/cards/minimal_tip_card.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/cards/circular_progress_card.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/cards/ai_mentor_card.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/main_shell.dart';
 
@@ -263,6 +264,22 @@ class _DashboardContentState extends State<_DashboardContent>
                       ),
                     ),
 
+                    // AI Mentor Card
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          AppSpacing.lg,
+                          AppSpacing.md,
+                          0,
+                        ),
+                        child: AIMentorCard(
+                          onTap: () =>
+                              Navigator.pushNamed(context, AppRoutes.aiMentor),
+                        ).animate().fadeIn(delay: 500.ms, duration: 300.ms),
+                      ),
+                    ),
+
                     // Recent Activity
                     if (state.recentSessions.isNotEmpty) ...[
                       SliverToBoxAdapter(
@@ -506,70 +523,135 @@ class _TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.border, width: 1),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.05),
-            blurRadius: 8,
+            color: AppColors.primary.withValues(alpha: 0.15),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: const Icon(
-              Icons.task_alt,
-              color: AppColors.primary,
-              size: 24,
-            ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            border: Border.all(color: AppColors.border, width: 1),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          child: IntrinsicHeight(
+            child: Row(
               children: [
-                Text(
-                  task.title ?? 'Task',
-                  style: AppTypography.subtitle1.copyWith(
-                    fontWeight: FontWeight.w600,
+                // Gradient accent bar on left
+                Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [AppColors.primary, AppColors.secondary],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'Due Today',
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.secondary,
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Row(
+                      children: [
+                        // Icon container with gradient background
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.primary.withValues(alpha: 0.2),
+                                AppColors.secondary.withValues(alpha: 0.1),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                          child: const Icon(
+                            Icons.task_alt_rounded,
+                            color: AppColors.primary,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                task.title ?? 'Task',
+                                style: AppTypography.subtitle1.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.secondary.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadius.sm,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Due Today',
+                                      style: AppTypography.caption.copyWith(
+                                        color: AppColors.secondary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Start Focus Session',
+                                    style: AppTypography.caption.copyWith(
+                                      color: AppColors.textTertiary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                          ),
+                          child: const Icon(
+                            Icons.play_arrow_rounded,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          Icon(
-            Icons.chevron_right,
-            color: AppColors.textSecondary.withValues(alpha: 0.5),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -578,77 +660,187 @@ class _TaskCard extends StatelessWidget {
 class _QuickActionsGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Calculate item width for 4 items per row accounting for spacing
-        // (width - (spacing * 3)) / 4
-        // Logic for grid:
+    return Row(
+      children: [
+        // Primary Actions (3 most-used)
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.quiz_rounded,
+            label: 'Quiz',
+            color: AppColors.primary,
+            onTap: () => Navigator.pushNamed(context, AppRoutes.quizSetup),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.psychology_rounded,
+            label: 'AI Mentor',
+            color: AppColors.secondary,
+            onTap: () => Navigator.pushNamed(context, AppRoutes.aiMentor),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.timer_rounded,
+            label: 'Focus',
+            color: AppColors.accent,
+            onTap: () => Navigator.pushNamed(context, AppRoutes.focusSession),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        // "More" button opens bottom sheet
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.apps_rounded,
+            label: 'More',
+            color: Colors.grey,
+            onTap: () => _showMoreActionsSheet(context),
+          ),
+        ),
+      ],
+    );
+  }
 
-        return GridView.count(
-          crossAxisCount: 4,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: AppSpacing.md,
-          crossAxisSpacing: AppSpacing.md,
-          childAspectRatio: 0.85, // Adjust for height
+  void _showMoreActionsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ActionButton(
-              icon: Icons.quiz_rounded,
-              label: 'Quiz',
-              color: AppColors.primary,
-              onTap: () => Navigator.pushNamed(context, AppRoutes.quizSetup),
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
             ),
-            _ActionButton(
-              icon: Icons.psychology_rounded,
-              label: 'AI Mentor',
-              color: AppColors.secondary,
-              onTap: () => Navigator.pushNamed(context, AppRoutes.aiMentor),
+            const Text(
+              'More Actions',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
-            _ActionButton(
-              icon: Icons.timer_rounded,
-              label: 'Focus',
-              color: AppColors.accent,
-              onTap: () => Navigator.pushNamed(context, AppRoutes.focusSession),
+            const SizedBox(height: AppSpacing.lg),
+            // Grid of secondary actions
+            GridView.count(
+              crossAxisCount: 4,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: AppSpacing.md,
+              crossAxisSpacing: AppSpacing.md,
+              childAspectRatio: 0.9,
+              children: [
+                _MoreActionItem(
+                  icon: Icons.auto_awesome_rounded,
+                  label: 'Plan',
+                  color: Colors.purple,
+                  onTap: () {
+                    Navigator.pop(context);
+                    MainShell.switchTab(context, 2);
+                  },
+                ),
+                _MoreActionItem(
+                  icon: Icons.note_alt_rounded,
+                  label: 'Notes',
+                  color: Colors.green,
+                  onTap: () {
+                    Navigator.pop(context);
+                    MainShell.switchTab(context, 1);
+                  },
+                ),
+                _MoreActionItem(
+                  icon: Icons.bar_chart_rounded,
+                  label: 'Stats',
+                  color: Colors.blue,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, AppRoutes.statistics);
+                  },
+                ),
+                _MoreActionItem(
+                  icon: Icons.emoji_events_rounded,
+                  label: 'Badges',
+                  color: Colors.orange,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, AppRoutes.achievements);
+                  },
+                ),
+                _MoreActionItem(
+                  icon: Icons.school_rounded,
+                  label: 'Explore',
+                  color: Colors.teal,
+                  onTap: () {
+                    Navigator.pop(context);
+                    MainShell.switchTab(context, 3);
+                  },
+                ),
+              ],
             ),
-            _ActionButton(
-              icon: Icons.auto_awesome_rounded,
-              label: 'Plan',
-              color: Colors.purple,
-              onTap: () => MainShell.switchTab(context, 2),
-            ),
-            _ActionButton(
-              icon: Icons.note_alt_rounded,
-              label: 'Notes',
-              color: Colors.green,
-              onTap: () => MainShell.switchTab(context, 1),
-            ),
-            _ActionButton(
-              icon: Icons.bar_chart_rounded,
-              label: 'Stats',
-              color: Colors.blue,
-              onTap: () => Navigator.pushNamed(context, AppRoutes.statistics),
-            ),
-            _ActionButton(
-              icon: Icons.emoji_events_rounded,
-              label: 'Badges',
-              color: Colors.orange,
-              onTap: () => Navigator.pushNamed(context, AppRoutes.achievements),
-            ),
-            _ActionButton(
-              icon: Icons.settings_rounded, // New Settings shortcut
-              label: 'Settings',
-              color: Colors.grey,
-              onTap: () async {
-                await Navigator.pushNamed(context, AppRoutes.settings);
-                // Refresh dashboard when returning from settings
-                if (context.mounted) {
-                  context.read<DashboardViewModel>().loadDashboard();
-                }
-              },
-            ),
+            const SizedBox(height: AppSpacing.lg),
           ],
-        );
-      },
+        ),
+      ),
+    );
+  }
+}
+
+/// Action item for the More bottom sheet
+class _MoreActionItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _MoreActionItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: AppTypography.caption.copyWith(fontWeight: FontWeight.w500),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }

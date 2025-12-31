@@ -1,20 +1,18 @@
 /// Lottie Loading Widget
-/// Animated loading indicator.
+/// Animated loading indicator using Lottie.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 
-/// Loading widget with animation (fallback to CircularProgressIndicator).
+/// Loading widget with Lottie animation.
+/// Use for initial data loading states - not for every loading spinner.
 class LottieLoading extends StatelessWidget {
   final double size;
   final String? message;
 
-  const LottieLoading({
-    super.key,
-    this.size = 100,
-    this.message,
-  });
+  const LottieLoading({super.key, this.size = 100, this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +22,10 @@ class LottieLoading extends StatelessWidget {
         SizedBox(
           width: size,
           height: size,
-          child: const CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(StudyBuddyColors.primary),
-            strokeWidth: 3,
+          child: Lottie.asset(
+            'lib/assets/animations/Loading 40 _ Paperplane (3).json',
+            fit: BoxFit.contain,
+            repeat: true,
           ),
         ),
         if (message != null) ...[

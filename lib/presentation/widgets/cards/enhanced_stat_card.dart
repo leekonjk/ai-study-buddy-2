@@ -22,52 +22,59 @@ class EnhancedStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final gradientEnd = secondaryColor ?? primaryColor.withValues(alpha: 0.6);
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            primaryColor.withValues(alpha: 0.15),
-            gradientEnd.withValues(alpha: 0.05),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 200),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              primaryColor.withValues(alpha: 0.15),
+              gradientEnd.withValues(alpha: 0.05),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: primaryColor.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: primaryColor.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: primaryColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(icon, color: primaryColor, size: 28),
             ),
-            child: Icon(icon, color: primaryColor, size: 24),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            value,
-            style: AppTypography.headline2.copyWith(
-              color: primaryColor,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              value,
+              style: AppTypography.headline2.copyWith(
+                color: primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: AppTypography.body2.copyWith(color: AppColors.textSecondary),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: AppTypography.body2.copyWith(
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

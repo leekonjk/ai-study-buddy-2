@@ -293,6 +293,7 @@ void _registerViewModels() {
       focusSessionRepository: getIt<FocusSessionRepository>(),
       achievementRepository: getIt<AchievementRepository>(),
       noteRepository: getIt<NoteRepository>(),
+      quizRepository: getIt<QuizRepository>(),
       notificationService: getIt<NotificationService>(), // Added
       auth: getIt<FirebaseAuth>(),
     ),

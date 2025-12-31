@@ -35,7 +35,7 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedSubjectId = widget.preselectedSubjectId;
+    // Don't set _selectedSubjectId here - validate after subjects load
     _loadUserSubjects();
   }
 
@@ -51,6 +51,15 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
             setState(() {
               _userSubjects = subjects;
               _loadingSubjects = false;
+              // Only set preselected subject if it exists in loaded list
+              if (widget.preselectedSubjectId != null) {
+                final exists = subjects.any(
+                  (s) => s.id == widget.preselectedSubjectId,
+                );
+                if (exists) {
+                  _selectedSubjectId = widget.preselectedSubjectId;
+                }
+              }
             });
           }
         },
@@ -59,6 +68,7 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
             setState(() {
               _userSubjects = [];
               _loadingSubjects = false;
+              _selectedSubjectId = null; // Clear on failure
             });
           }
         },
@@ -68,6 +78,7 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
         setState(() {
           _userSubjects = [];
           _loadingSubjects = false;
+          _selectedSubjectId = null; // Clear on error
         });
       }
     }
@@ -362,39 +373,50 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
                       border: Border.all(color: StudyBuddyColors.border),
                     ),
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String?>(
-                        value: _selectedSubjectId,
-                        isExpanded: true,
-                        hint: const Text('Select a subject'),
-                        dropdownColor: StudyBuddyColors.cardBackground,
-                        style: const TextStyle(
-                          color: StudyBuddyColors.textPrimary,
-                          fontSize: 14,
-                        ),
-                        items: [
-                          const DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text('No subject'),
-                          ),
-                          // Load real user subjects
-                          if (_loadingSubjects)
-                            const DropdownMenuItem<String?>(
-                              value: null,
-                              enabled: false,
-                              child: Text('Loading subjects...'),
-                            )
-                          else
-                            ..._userSubjects.map((subject) {
-                              return DropdownMenuItem<String>(
-                                value: subject.id,
-                                child: Text(subject.name),
-                              );
-                            }),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedSubjectId = value;
-                          });
+                      child: Builder(
+                        builder: (context) {
+                          // Compute valid value - must exist in items or be null
+                          final validSubjectIds = _userSubjects.map((s) => s.id).toSet();
+                          final validValue = (_selectedSubjectId != null && 
+                                             validSubjectIds.contains(_selectedSubjectId))
+                              ? _selectedSubjectId
+                              : null;
+                          
+                          return DropdownButton<String?>(
+                            value: validValue,
+                            isExpanded: true,
+                            hint: const Text('Select a subject'),
+                            dropdownColor: StudyBuddyColors.cardBackground,
+                            style: const TextStyle(
+                              color: StudyBuddyColors.textPrimary,
+                              fontSize: 14,
+                            ),
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('No subject'),
+                              ),
+                              // Load real user subjects
+                              if (_loadingSubjects)
+                                const DropdownMenuItem<String?>(
+                                  value: null,
+                                  enabled: false,
+                                  child: Text('Loading subjects...'),
+                                )
+                              else
+                                ..._userSubjects.map((subject) {
+                                  return DropdownMenuItem<String>(
+                                    value: subject.id,
+                                    child: Text(subject.name),
+                                  );
+                                }),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedSubjectId = value;
+                              });
+                            },
+                          );
                         },
                       ),
                     ),

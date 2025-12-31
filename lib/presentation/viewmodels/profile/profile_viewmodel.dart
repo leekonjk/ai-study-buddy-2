@@ -9,6 +9,7 @@ import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/focus_session_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/achievement_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/note_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/quiz_repository.dart';
 import 'package:studnet_ai_buddy/domain/services/notification_service.dart'; // Added
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 
@@ -73,6 +74,7 @@ class ProfileViewModel extends BaseViewModel {
   final FocusSessionRepository _focusSessionRepository;
   final AchievementRepository _achievementRepository;
   final NoteRepository _noteRepository;
+  final QuizRepository _quizRepository;
   final NotificationService _notificationService;
   final FirebaseAuth _auth;
 
@@ -81,12 +83,14 @@ class ProfileViewModel extends BaseViewModel {
     required FocusSessionRepository focusSessionRepository,
     required AchievementRepository achievementRepository,
     required NoteRepository noteRepository,
+    required QuizRepository quizRepository,
     required NotificationService notificationService,
     required FirebaseAuth auth,
   }) : _academicRepository = academicRepository,
        _focusSessionRepository = focusSessionRepository,
        _achievementRepository = achievementRepository,
        _noteRepository = noteRepository,
+       _quizRepository = quizRepository,
        _notificationService = notificationService,
        _auth = auth;
 
@@ -147,6 +151,24 @@ class ProfileViewModel extends BaseViewModel {
       onFailure: (_) {},
     );
 
+    // Load Quiz Count from all enrolled subjects
+    int quizzesCompleted = 0;
+    final subjectsResult = await _academicRepository.getEnrolledSubjects();
+    subjectsResult.fold(
+      onSuccess: (subjects) async {
+        for (final subject in subjects) {
+          final quizHistoryResult = await _quizRepository.getQuizHistory(
+            subject.id,
+          );
+          quizHistoryResult.fold(
+            onSuccess: (quizzes) => quizzesCompleted += quizzes.length,
+            onFailure: (_) {},
+          );
+        }
+      },
+      onFailure: (_) {},
+    );
+
     // Check & Unlock Achievements
     final unlockResult = await _achievementRepository
         .checkAndUnlockAchievements(
@@ -183,7 +205,7 @@ class ProfileViewModel extends BaseViewModel {
       photoUrl: photoUrl,
       streakDays: streak,
       totalStudyHours: totalMinutes ~/ 60,
-      quizzesCompleted: 0,
+      quizzesCompleted: quizzesCompleted,
       academicProfile: loadedProfile,
       achievements: achievements,
     );

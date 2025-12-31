@@ -3,13 +3,14 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:studnet_ai_buddy/presentation/navigation/bottom_nav_bar.dart';
-import 'package:studnet_ai_buddy/presentation/widgets/ai/ai_mascot_widget.dart';
+import 'package:studnet_ai_buddy/di/service_locator.dart';
+import 'package:studnet_ai_buddy/presentation/viewmodels/dashboard/dashboard_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/screens/dashboard/dashboard_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/explore/explore_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/library/library_screen.dart';
 import 'package:studnet_ai_buddy/presentation/screens/profile/profile_screen.dart';
-import 'package:studnet_ai_buddy/presentation/screens/planner/enhanced_ai_planner_screen.dart'; // Added
+import 'package:studnet_ai_buddy/presentation/screens/planner/enhanced_ai_planner_screen.dart';
+import 'package:studnet_ai_buddy/presentation/navigation/bottom_nav_bar.dart';
 
 /// Main shell with bottom navigation.
 class MainShell extends StatefulWidget {
@@ -24,143 +25,153 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
+  // Dashboard state management
+  late final DashboardViewModel _dashboardViewModel;
+  late final List<Widget> _screens;
   int _currentIndex = 0;
-  Offset _mascotOffset = const Offset(
-    20,
-    100,
-  ); // Bottom-left default (relative to bottom-left)
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize DashboardViewModel once and keep it alive
+    _dashboardViewModel = getIt<DashboardViewModel>();
+
+    // Initial load
+    _dashboardViewModel.loadDashboard();
+
+    _screens = [
+      DashboardScreen(viewModel: _dashboardViewModel),
+      const LibraryScreen(),
+      const EnhancedAIPlannerScreen(),
+      const ExploreScreen(),
+      const ProfileScreen(),
+    ];
+  }
 
   void switchTo(int index) {
     setState(() {
       _currentIndex = index;
     });
+    _tabController.animateTo(index);
   }
-
-  final List<Widget> _screens = [
-    const DashboardScreen(),
-    const LibraryScreen(),
-    const EnhancedAIPlannerScreen(), // Added
-    const ExploreScreen(),
-    const ProfileScreen(),
-  ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: Stack(
-        children: [
-          IndexedStack(index: _currentIndex, children: _screens),
-          Positioned(
-            left: _mascotOffset.dx,
-            bottom: _mascotOffset.dy,
-            child: GestureDetector(
-              onPanUpdate: (details) {
-                setState(() {
-                  // Invert dy because Positioned uses 'bottom'
-                  _mascotOffset = Offset(
-                    _mascotOffset.dx + details.delta.dx,
-                    _mascotOffset.dy - details.delta.dy,
-                  );
-                });
+    return DefaultTabController(
+      length: _screens.length,
+      child: Builder(
+        builder: (context) {
+          _tabController = DefaultTabController.of(context);
+          return Scaffold(
+            extendBody: true, // For curved nav bar
+            appBar: AppBar(
+              backgroundColor: const Color(0xFF1A1A2E),
+              elevation: 0,
+              title: const Text(
+                'Study Buddy',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: Colors.white,
+                ),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Text('🎓', style: TextStyle(fontSize: 24)),
+                  onPressed: () => _showMascotDialog(context),
+                ),
+              ],
+            ),
+            body: TabBarView(
+              physics: const NeverScrollableScrollPhysics(),
+              children: _screens,
+            ),
+            bottomNavigationBar: BottomNavBar(
+              currentIndex: _currentIndex,
+              onTap: (index) {
+                switchTo(index);
               },
-              child: AIMascotWidget(
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => Dialog(
-                      backgroundColor: Colors.transparent,
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E2C), // Dark surface
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color(0xFF6C63FF),
-                            width: 2,
-                          ), // Accent border
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF6C63FF,
-                              ).withValues(alpha: 0.3),
-                              blurRadius: 20,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text(
-                              "🎓 AI Mentor",
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              "Hello! I'm here to help you study.\nWhat would you like to do?",
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            // Action Buttons
-                            _buildMascotAction(
-                              context,
-                              "Ask a Question",
-                              Icons.chat_bubble_outline_rounded,
-                              () {
-                                Navigator.pop(context);
-                                Navigator.pushNamed(
-                                  context,
-                                  '/ai-mentor',
-                                ); // Or Chat route
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            _buildMascotAction(
-                              context,
-                              "Generate Flashcards",
-                              Icons.flash_on_rounded,
-                              () {
-                                Navigator.pop(context);
-                                Navigator.pushNamed(context, '/add-flashcards');
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            _buildMascotAction(
-                              context,
-                              "Update Study Plan",
-                              Icons.calendar_month_rounded,
-                              () {
-                                Navigator.pop(context);
-                                MainShell.switchTab(context, 2); // Planner tab
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showMascotDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E2C), // Dark surface
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: const Color(0xFF6C63FF),
+              width: 2,
+            ), // Accent border
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF6C63FF).withValues(alpha: 0.3),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "🎓 AI Mentor",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Hello! I'm here to help you study.\nWhat would you like to do?",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const SizedBox(height: 24),
+              // Action Buttons
+              _buildMascotAction(
+                context,
+                "Ask a Question",
+                Icons.chat_bubble_outline_rounded,
+                () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/ai-mentor');
                 },
               ),
-            ),
+              const SizedBox(height: 12),
+              _buildMascotAction(
+                context,
+                "Generate Flashcards",
+                Icons.flash_on_rounded,
+                () {
+                  Navigator.pop(context);
+                  Navigator.pushNamed(context, '/add-flashcards');
+                },
+              ),
+              const SizedBox(height: 12),
+              _buildMascotAction(
+                context,
+                "Update Study Plan",
+                Icons.calendar_month_rounded,
+                () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(2);
+                },
+              ),
+            ],
           ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        ),
       ),
     );
   }

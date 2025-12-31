@@ -1,9 +1,9 @@
 /// Study Plan Repository Implementation.
 /// Concrete implementation of StudyPlanRepository interface using Firebase Firestore.
-/// 
+///
 /// Layer: Data
 /// Responsibility: Data operations for study plans and tasks via Firestore.
-/// 
+///
 /// Firestore Collections Used:
 /// - study_plans: Weekly study plans with embedded tasks
 library;
@@ -26,8 +26,8 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
   StudyPlanRepositoryImpl({
     required FirebaseFirestore firestore,
     required FirebaseAuth auth,
-  })  : _firestore = firestore,
-        _auth = auth;
+  }) : _firestore = firestore,
+       _auth = auth;
 
   String get _currentStudentId => _auth.currentUser?.uid ?? '';
 
@@ -52,7 +52,11 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
   Future<Result<StudyPlan?>> getPlanForWeek(DateTime weekStart) async {
     try {
       // Normalize to start of day
-      final normalizedStart = DateTime(weekStart.year, weekStart.month, weekStart.day);
+      final normalizedStart = DateTime(
+        weekStart.year,
+        weekStart.month,
+        weekStart.day,
+      );
       final weekStartTimestamp = Timestamp.fromDate(normalizedStart);
 
       // Query for active plan for this week
@@ -73,10 +77,12 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
 
       return Success(plan);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to fetch study plan: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to fetch study plan: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -95,12 +101,52 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
 
       return const Success(null);
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to save study plan: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to save study plan: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
+    }
+  }
+
+  @override
+  Stream<Result<StudyPlan?>> getPlanStream() {
+    try {
+      final now = DateTime.now();
+      final weekStart = _getWeekStart(now);
+      final normalizedStart = DateTime(
+        weekStart.year,
+        weekStart.month,
+        weekStart.day,
+      );
+      final weekStartTimestamp = Timestamp.fromDate(normalizedStart);
+
+      return _firestore
+          .collection(_studyPlansCollection)
+          .where('studentId', isEqualTo: _currentStudentId)
+          .where('weekStartDate', isEqualTo: weekStartTimestamp)
+          .where('isActive', isEqualTo: true)
+          .limit(1)
+          .snapshots()
+          .map((snapshot) {
+            if (snapshot.docs.isEmpty) {
+              return const Success(null);
+            }
+            try {
+              final doc = snapshot.docs.first;
+              final plan = _mapDocumentToStudyPlan(doc);
+              return Success(plan);
+            } catch (e) {
+              return Err(NetworkFailure(message: 'Mapping error: $e'));
+            }
+          });
+    } catch (e) {
+      return Stream.value(
+        Err(NetworkFailure(message: 'Stream init error: $e')),
+      );
     }
   }
 
@@ -150,7 +196,9 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
               .get();
 
           if (querySnapshot.docs.isEmpty) {
-            return const Err(NetworkFailure(message: 'Plan document not found'));
+            return const Err(
+              NetworkFailure(message: 'Plan document not found'),
+            );
           }
 
           final docRef = querySnapshot.docs.first.reference;
@@ -173,10 +221,12 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
         onFailure: (failure) async => Err(failure),
       );
     } on FirebaseException catch (e) {
-      return Err(NetworkFailure(
-        message: 'Failed to update task: ${e.message}',
-        code: e.code,
-      ));
+      return Err(
+        NetworkFailure(
+          message: 'Failed to update task: ${e.message}',
+          code: e.code,
+        ),
+      );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
     }
@@ -218,7 +268,7 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Maps Firestore document to StudyPlan domain entity.
-  /// 
+  ///
   /// Firestore schema (study_plans):
   /// - planId: string
   /// - studentId: string
@@ -226,7 +276,9 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
   /// - tasks: array of task objects
   /// - generatedAt: timestamp
   /// - isActive: bool
-  StudyPlan _mapDocumentToStudyPlan(DocumentSnapshot<Map<String, dynamic>> doc) {
+  StudyPlan _mapDocumentToStudyPlan(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
     final data = doc.data()!;
 
     final tasksData = data['tasks'] as List<dynamic>? ?? [];
@@ -234,9 +286,11 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
         .map((t) => _mapDocumentToTask(t as Map<String, dynamic>))
         .toList();
 
-    final weekStartDate = (data['weekStartDate'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final weekStartDate =
+        (data['weekStartDate'] as Timestamp?)?.toDate() ?? DateTime.now();
     final weekEndDate = weekStartDate.add(const Duration(days: 6));
-    final generatedAt = (data['generatedAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final generatedAt =
+        (data['generatedAt'] as Timestamp?)?.toDate() ?? DateTime.now();
 
     return StudyPlan(
       id: data['planId'] as String? ?? doc.id,
@@ -250,7 +304,7 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
   }
 
   /// Maps embedded task data to StudyTask domain entity.
-  /// 
+  ///
   /// Firestore schema (tasks array item):
   /// - taskId: string
   /// - subjectId: string
@@ -266,13 +320,21 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
       id: data['taskId'] as String? ?? '',
       subjectId: data['subjectId'] as String? ?? '',
       title: data['title'] as String? ?? '',
-      description: '', // Not in schema, can be derived from title
-      date: data['scheduledDate'] != null 
+      description: data['description'] as String? ?? '',
+      date: data['scheduledDate'] != null
           ? (data['scheduledDate'] as Timestamp).toDate()
-          : DateTime.now(), // Not stored per-task in schema
+          : (data['date'] != null
+                ? (data['date'] as Timestamp).toDate()
+                : DateTime.now()),
       estimatedMinutes: data['estimatedMinutes'] as int? ?? 30,
-      priority: TaskPriority.medium, // Not in schema, default
-      type: TaskType.study, // Not in schema, default
+      priority: TaskPriority.values.firstWhere(
+        (e) => e.name == (data['priority'] as String? ?? 'medium'),
+        orElse: () => TaskPriority.medium,
+      ),
+      type: TaskType.values.firstWhere(
+        (e) => e.name == (data['type'] as String? ?? 'study'),
+        orElse: () => TaskType.study,
+      ),
       isCompleted: isCompleted,
       aiReasoning: data['aiReasoning'] as String? ?? '',
     );
@@ -309,9 +371,13 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
       'taskId': task.id,
       'subjectId': task.subjectId,
       'title': task.title,
+      'description': task.description,
+      'scheduledDate': Timestamp.fromDate(task.date),
       'estimatedMinutes': task.estimatedMinutes,
       'aiReasoning': task.aiReasoning,
       'status': status,
+      'priority': task.priority.name,
+      'type': task.type.name,
     };
   }
 
@@ -327,7 +393,11 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
 
   /// Deactivates existing plans for the given week.
   Future<void> _deactivateExistingPlans(DateTime weekStart) async {
-    final normalizedStart = DateTime(weekStart.year, weekStart.month, weekStart.day);
+    final normalizedStart = DateTime(
+      weekStart.year,
+      weekStart.month,
+      weekStart.day,
+    );
     final weekStartTimestamp = Timestamp.fromDate(normalizedStart);
 
     final querySnapshot = await _firestore

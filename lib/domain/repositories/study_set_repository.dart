@@ -10,6 +10,9 @@ abstract class StudySetRepository {
   /// Get all study sets for current student.
   Future<Result<List<StudySet>>> getAllStudySets();
 
+  /// Watch all study sets for current student (real-time).
+  Stream<Result<List<StudySet>>> watchAllStudySets();
+
   /// Get study sets filtered by date range.
   Future<Result<List<StudySet>>> getStudySetsByDateRange({
     required DateTime startDate,

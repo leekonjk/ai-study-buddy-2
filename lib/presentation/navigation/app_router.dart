@@ -228,6 +228,8 @@ class AppRouter {
             studySetDescription: args?['studySetDescription'] ?? '',
             isPrivate: args?['isPrivate'] ?? true,
             subjectId: args?['subjectId'], // Pass subjectId
+            fileId: args?['fileId'], // Pass fileId
+            autoStartAI: args?['autoStartAI'] ?? false, // Handle autoStartAI
           ),
         );
 

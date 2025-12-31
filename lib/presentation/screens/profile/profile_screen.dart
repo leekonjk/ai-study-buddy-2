@@ -176,28 +176,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               color: StudyBuddyColors.border,
                               height: 1,
                             ),
-                            _buildSettingsTile(
-                              icon: Icons.notifications_outlined,
-                              title: 'Notifications',
-                              onTap: () {},
-                            ),
-                            const Divider(
-                              color: StudyBuddyColors.border,
-                              height: 1,
-                            ),
-                            _buildSettingsTile(
-                              icon: Icons.dark_mode_outlined,
-                              title: 'Dark Mode',
-                              trailing: Switch(
-                                value: true,
-                                onChanged: (_) {},
-                                activeThumbColor: StudyBuddyColors.primary,
-                              ),
-                            ),
-                            const Divider(
-                              color: StudyBuddyColors.border,
-                              height: 1,
-                            ),
+
                             _buildSettingsTile(
                               icon: Icons.bar_chart_rounded,
                               title: 'Statistics',
@@ -217,15 +196,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 context,
                                 AppRoutes.achievements,
                               ),
-                            ),
-                            const Divider(
-                              color: StudyBuddyColors.border,
-                              height: 1,
-                            ),
-                            _buildSettingsTile(
-                              icon: Icons.help_outline_rounded,
-                              title: 'Help & Support',
-                              onTap: () {},
                             ),
                           ],
                         ),

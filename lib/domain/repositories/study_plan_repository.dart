@@ -1,6 +1,6 @@
 /// Study Plan Repository Interface.
 /// Defines contract for study plan and task data operations.
-/// 
+///
 /// Layer: Domain
 /// Responsibility: Abstract data access for study planning.
 /// Implementation: Data layer provides concrete implementation.
@@ -28,4 +28,7 @@ abstract class StudyPlanRepository {
 
   /// Retrieves overdue tasks.
   Future<Result<List<StudyTask>>> getOverdueTasks();
+
+  /// Stream of current week's plan for real-time updates.
+  Stream<Result<StudyPlan?>> getPlanStream();
 }

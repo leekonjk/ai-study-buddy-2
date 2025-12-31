@@ -16,6 +16,7 @@ import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/services/impl/achievement_service_impl.dart';
+import 'dart:async'; // Added for StreamSubscription
 
 /// Immutable state for AI Planner.
 class AIPlannerState {
@@ -25,6 +26,7 @@ class AIPlannerState {
   final List<Subject> subjects;
   final String? errorMessage;
   final String aiRecommendation;
+  final DateTime selectedDate;
 
   const AIPlannerState({
     this.viewState = ViewState.initial,
@@ -34,6 +36,7 @@ class AIPlannerState {
     this.errorMessage,
     this.aiRecommendation =
         "Based on your progress, let's focus on upcoming topics.",
+    required this.selectedDate,
   });
 
   AIPlannerState copyWith({
@@ -43,6 +46,7 @@ class AIPlannerState {
     List<Subject>? subjects,
     String? errorMessage,
     String? aiRecommendation,
+    DateTime? selectedDate,
   }) {
     return AIPlannerState(
       viewState: viewState ?? this.viewState,
@@ -51,6 +55,7 @@ class AIPlannerState {
       subjects: subjects ?? this.subjects,
       errorMessage: errorMessage,
       aiRecommendation: aiRecommendation ?? this.aiRecommendation,
+      selectedDate: selectedDate ?? this.selectedDate,
     );
   }
 }
@@ -68,39 +73,99 @@ class AIPlannerViewModel extends BaseViewModel {
        _academicRepository = academicRepository,
        _aiMentorService = aiMentorService;
 
-  AIPlannerState _state = const AIPlannerState();
+  AIPlannerState _state = AIPlannerState(selectedDate: DateTime.now());
   AIPlannerState get state => _state;
+
+  /// Selects a new date and updates the task list.
+  void selectDate(DateTime date) {
+    if (_state.currentPlan == null) {
+      _state = _state.copyWith(selectedDate: date);
+      notifyListeners();
+      return;
+    }
+    _state = _state.copyWith(
+      selectedDate: date,
+      tasks: _state.currentPlan!.tasksForDate(date),
+    );
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _planSubscription?.cancel();
+    super.dispose();
+  }
+
+  StreamSubscription? _planSubscription;
+
+  void _startListeningToPlan() {
+    if (_planSubscription != null) return;
+
+    _planSubscription = _studyPlanRepository.getPlanStream().listen((result) {
+      result.fold(
+        onSuccess: (plan) {
+          // If we have a plan, update state
+          if (plan != null) {
+            _state = _state.copyWith(
+              currentPlan: plan,
+              tasks: plan.tasksForDate(_state.selectedDate),
+              aiRecommendation: plan.aiSummary.isNotEmpty
+                  ? plan.aiSummary
+                  : "Focus on your scheduled tasks for today.",
+            );
+            notifyListeners();
+          } else {
+            // Plan is null
+          }
+        },
+        onFailure: (_) {
+          // Log error
+        },
+      );
+    });
+  }
+
+  /// Regenerates the study plan.
+  Future<void> regeneratePlan() async {
+    _state = _state.copyWith(viewState: ViewState.loading);
+    notifyListeners();
+    await _generateInitialPlan(_state.subjects);
+  }
 
   /// Loads the current study plan and tasks.
   Future<void> loadPlan() async {
     _state = _state.copyWith(viewState: ViewState.loading);
     notifyListeners();
 
-    // 1. Fetch Subjects (needed for task generation if logic exists)
+    // 1. Fetch Subjects (needed for task generation)
     final subjectsResult = await _academicRepository.getEnrolledSubjects();
     List<Subject> subjects = [];
     subjectsResult.fold(onSuccess: (s) => subjects = s, onFailure: (_) {});
 
-    // 2. Fetch Current Plan
+    _state = _state.copyWith(subjects: subjects);
+
+    // 2. Start listening to stream (this will load initial data too)
+    _startListeningToPlan();
+
+    // 3. Check if plan exists via initial fetch to trigger generation if missing
+    // (Stream might return null, but we need to know strictly if we should generate)
     final planResult = await _studyPlanRepository.getCurrentWeekPlan();
 
     planResult.fold(
       onSuccess: (plan) async {
         if (plan == null) {
-          // If no plan exists, generate one automatically for initial experience
+          // If no plan exists, generate one automatically
           await _generateInitialPlan(subjects);
         } else {
+          // Stream will handle the update, but we can set initial loaded state
           _state = _state.copyWith(
             viewState: ViewState.loaded,
             currentPlan: plan,
-            tasks: plan.tasksForDate(
-              DateTime.now(),
-            ), // Show today's tasks by default? Or all?
-            // Actually, let's show all tasks or group by day?
-            // The screen shows "Today's Study Plan".
-            // Let's filter for today for now to match UI.
-            subjects: subjects,
+            aiRecommendation: plan.aiSummary.isNotEmpty
+                ? plan.aiSummary
+                : "Focus on your scheduled tasks for today.",
           );
+          notifyListeners();
         }
       },
       onFailure: (failure) {
@@ -108,9 +173,9 @@ class AIPlannerViewModel extends BaseViewModel {
           viewState: ViewState.error,
           errorMessage: failure.message,
         );
+        notifyListeners();
       },
     );
-    notifyListeners();
   }
 
   /// Generates an initial study plan if none exists.
@@ -151,10 +216,6 @@ class AIPlannerViewModel extends BaseViewModel {
         subjects: subjects,
       );
 
-      // Assign dates starting from tomorrow?
-      // The AI returns tasks with roughly correct relative schedule or we can distribute them.
-      // Current AI impl assigns 'tomorrow' for all. Let's distribute them over the week.
-
       final distributedTasks = _distributeTasksOverWeek(newTasks, weekStart);
 
       final newPlan = StudyPlan(
@@ -178,7 +239,7 @@ class AIPlannerViewModel extends BaseViewModel {
           _state = _state.copyWith(
             viewState: ViewState.loaded,
             currentPlan: newPlan,
-            tasks: newPlan.tasksForDate(DateTime.now()),
+            tasks: newPlan.tasksForDate(_state.selectedDate),
             subjects: subjects,
           );
         },
@@ -239,6 +300,8 @@ class AIPlannerViewModel extends BaseViewModel {
     required String subjectId,
     required DateTime date,
     required int durationMinutes,
+    String? description,
+    TaskPriority? priority,
   }) async {
     if (_state.currentPlan == null) {
       _state = _state.copyWith(
@@ -253,15 +316,59 @@ class AIPlannerViewModel extends BaseViewModel {
       id: "manual_${DateTime.now().millisecondsSinceEpoch}",
       subjectId: subjectId,
       title: title,
-      description: "User created task",
+      description: description ?? "User created task",
       date: date,
       estimatedMinutes: durationMinutes,
-      priority: TaskPriority.medium,
+      priority: priority ?? TaskPriority.medium,
       type: TaskType.study,
       isCompleted: false,
       aiReasoning: "Manual addition",
     );
 
+    await _saveNewTask(newTask);
+  }
+
+  /// Suggests a task using AI and adds it to the plan.
+  Future<void> suggestTask({
+    required String subjectId,
+    String? topic,
+    required int durationMinutes,
+    DateTime? date,
+  }) async {
+    _state = _state.copyWith(viewState: ViewState.loading);
+    notifyListeners();
+
+    try {
+      final subject = _state.subjects.firstWhere((s) => s.id == subjectId);
+      final task = await _aiMentorService.suggestTask(
+        subjectId: subjectId,
+        subjectName: subject.name,
+        topic: topic,
+        durationMinutes: durationMinutes,
+      );
+
+      // Adjust date to currently selected date with next available slot logic if needed
+      // Use provided date or default to selected date + default time (e.g. 9 AM or now)
+      final scheduledDate =
+          date ??
+          _state.selectedDate.copyWith(
+            hour: DateTime.now().hour + 1, // Start next hour
+            minute: 0,
+          );
+
+      final scheduledTask = task.copyWith(date: scheduledDate);
+
+      await _saveNewTask(scheduledTask);
+    } catch (e) {
+      _state = _state.copyWith(
+        viewState: ViewState.error,
+        errorMessage: "Failed to generate task: $e",
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> _saveNewTask(StudyTask newTask) async {
     // Create updated plan
     final updatedTasks = List<StudyTask>.from(_state.currentPlan!.tasks)
       ..add(newTask);
@@ -273,13 +380,17 @@ class AIPlannerViewModel extends BaseViewModel {
     result.fold(
       onSuccess: (_) {
         _state = _state.copyWith(
+          viewState: ViewState.loaded,
           currentPlan: updatedPlan,
-          tasks: updatedPlan.tasksForDate(DateTime.now()), // Refresh view
+          tasks: updatedPlan.tasksForDate(
+            _state.selectedDate,
+          ), // Refresh with current selection
           errorMessage: null,
         );
       },
       onFailure: (failure) {
         _state = _state.copyWith(
+          viewState: ViewState.loaded, // Revert loading state
           errorMessage: "Failed to save task: ${failure.message}",
         );
       },
@@ -310,7 +421,7 @@ class AIPlannerViewModel extends BaseViewModel {
         // Update local state
         _state = _state.copyWith(
           currentPlan: updatedPlan,
-          tasks: updatedPlan.tasksForDate(DateTime.now()),
+          tasks: updatedPlan.tasksForDate(_state.selectedDate),
         );
         notifyListeners();
 

@@ -32,6 +32,71 @@ class AIMentorServiceImpl implements AIMentorService {
   }
 
   @override
+  Future<StudyTask> suggestTask({
+    required String subjectId,
+    required String subjectName,
+    required String? topic,
+    required int durationMinutes,
+  }) async {
+    try {
+      final prompt =
+          """
+      You are an expert academic study planner.
+      Suggest a SINGLE study task for a student.
+      Subject: $subjectName
+      Topic: ${topic ?? "General Review"}
+      Duration: $durationMinutes minutes
+      Current Date: ${DateTime.now().toIso8601String()}
+
+      Output STRICT JSON format only:
+      {
+        "title": "Short actionable title",
+        "description": "Specific instructions on what to study",
+        "priority": "medium", 
+        "reasoning": "Why this is important now"
+      }
+      """;
+
+      final content = [Content.text(prompt)];
+      final response = await _model.generateContent(content);
+
+      final responseText = response.text ?? "{}";
+      final cleanJson = _cleanJson(responseText);
+      final Map<String, dynamic> json = jsonDecode(cleanJson);
+
+      return StudyTask(
+        id: "ai_suggested_${DateTime.now().millisecondsSinceEpoch}",
+        subjectId: subjectId,
+        title: json['title'] ?? "Study $subjectName",
+        description: json['description'] ?? "Review key concepts",
+        date: DateTime.now(), // ViewModel should adjust this
+        estimatedMinutes: durationMinutes,
+        priority: TaskPriority.values.firstWhere(
+          (e) => e.name == json['priority'],
+          orElse: () => TaskPriority.medium,
+        ),
+        type: TaskType.study,
+        isCompleted: false,
+        aiReasoning: json['reasoning'] ?? "AI Suggestion",
+      );
+    } catch (e) {
+      // Fallback
+      return StudyTask(
+        id: "fallback_${DateTime.now().millisecondsSinceEpoch}",
+        subjectId: subjectId,
+        title: "Review $subjectName",
+        description: "Focus on ${topic ?? 'core concepts'}",
+        date: DateTime.now(),
+        estimatedMinutes: durationMinutes,
+        priority: TaskPriority.medium,
+        type: TaskType.study,
+        isCompleted: false,
+        aiReasoning: "Fallback suggestion",
+      );
+    }
+  }
+
+  @override
   Future<List<StudyTask>> generateStudyPlan({
     required AcademicProfile profile,
     required List<Subject> subjects,
@@ -51,9 +116,16 @@ class AIMentorServiceImpl implements AIMentorService {
       - Current Date: ${DateTime.now().toIso8601String()}
 
       Generate a JSON list of 5-7 study tasks for the next 7 days.
+      
+      CRITICAL RULES:
+      1. 'subject_name' MUST be exactly one of: $subjectNames. Do not invent new subjects.
+      2. Prioritize subjects listed in 'Weak Areas'.
+      3. Balance the difficulty.
+      4. Tasks should specific and actionable (e.g. "Chapter 4 Practice").
+
       Each task must have:
       - title: Short actionable title
-      - subject_name: Use one of the enrolled subjects
+      - subject_name: EXACT match from Enrolled Subjects
       - duration_minutes: 30-60
       - reasoning: Why this task is important based on their profile
       - type: 'study', 'quiz', or 'practice'
@@ -525,23 +597,54 @@ class AIMentorServiceImpl implements AIMentorService {
     required String difficulty,
     required int count,
   }) async {
-    // Using Firebase Firestore AI logic for file-based flashcard generation
-    // Connect to Firebase Genkit/Vertex AI + Cloud Storage for production
-    final flashcards = <Map<String, dynamic>>[];
+    try {
+      // In a real app, we would fetch the file content from Storage/Firestore first.
+      // For this demo, we'll use the file reference to simulate an AI call
+      // that "knows" what the file is about (e.g. by its name or metadata).
 
-    for (int i = 0; i < count; i++) {
-      flashcards.add({
-        'id':
-            'flashcard_file_${fileId}_${DateTime.now().millisecondsSinceEpoch}_$i',
-        'front': 'Question ${i + 1} from file',
-        'back': 'Answer ${i + 1} extracted from file content',
-        'difficulty': difficulty,
-        'fileId': fileId,
-        'createdAt': DateTime.now().toIso8601String(),
-      });
+      final prompt =
+          '''
+        Generate $count flashcards for the academic material in the file "$fileId".
+        Difficulty level: $difficulty.
+        
+        Return ONLY a raw JSON array with this structure:
+        [
+          {
+            "term": "Concept or Question",
+            "definition": "Definition or Answer"
+          }
+        ]
+      ''';
+
+      final content = [Content.text(prompt)];
+      final response = await _model.generateContent(content);
+
+      final responseText = response.text;
+      if (responseText == null) throw Exception('Empty response from AI');
+
+      final jsonString = _cleanJson(responseText);
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+
+      return jsonList.map((item) {
+        return {
+          'term': item['term'] ?? 'Unknown',
+          'definition': item['definition'] ?? 'No definition',
+          'difficulty': difficulty,
+          'fileId': fileId,
+          'createdAt': DateTime.now().toIso8601String(),
+        };
+      }).toList();
+    } catch (e) {
+      return [
+        {
+          'term': 'Error Processing File',
+          'definition': 'Failed to generate from file $fileId: $e',
+          'difficulty': difficulty,
+          'fileId': fileId,
+          'createdAt': DateTime.now().toIso8601String(),
+        },
+      ];
     }
-
-    return flashcards;
   }
 
   @override

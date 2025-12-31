@@ -6,10 +6,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
-import 'package:studnet_ai_buddy/domain/repositories/study_set_repository.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
+import 'package:studnet_ai_buddy/core/utils/result.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
 
 // import 'package:studnet_ai_buddy/domain/repositories/resource_repository.dart'; // Removed
@@ -39,8 +39,19 @@ class _LibraryScreenState extends State<LibraryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late LibraryViewModel _libraryViewModel;
-  List<StudySet> _studySets = [];
-  bool _isLoading = true;
+  String _searchQuery = '';
+  String _selectedCategory = 'All';
+  bool _isSearching = false;
+
+  final List<String> _categories = [
+    'All',
+    'Science',
+    'Math',
+    'History',
+    'Languages',
+    'Coding',
+    'Other',
+  ];
 
   @override
   void initState() {
@@ -52,43 +63,10 @@ class _LibraryScreenState extends State<LibraryScreen>
         setState(() {}); // Rebuild to update FAB
       }
     });
-    _loadStudySets();
     // Load files when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _libraryViewModel.loadFiles();
     });
-  }
-
-  Future<void> _loadStudySets() async {
-    final result = await getIt<StudySetRepository>().getAllStudySets();
-    result.fold(
-      onSuccess: (sets) {
-        setState(() {
-          _studySets = sets;
-          _isLoading = false;
-        });
-      },
-      onFailure: (failure) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to load study sets: ${failure.message}'),
-              backgroundColor: StudyBuddyColors.error,
-              duration: const Duration(seconds: 5),
-              action: SnackBarAction(
-                label: 'Retry',
-                textColor: Colors.white,
-                onPressed: _loadStudySets,
-              ),
-            ),
-          );
-        }
-        setState(() {
-          _studySets = [];
-          _isLoading = false;
-        });
-      },
-    );
   }
 
   @override
@@ -104,28 +82,74 @@ class _LibraryScreenState extends State<LibraryScreen>
       child: GradientScaffold(
         body: Column(
           children: [
-            // Header
+            // Header with Search
             Padding(
               padding: const EdgeInsets.all(24),
-              child: Row(
+              child: Column(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Library',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Library',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: StudyBuddyColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _isSearching = !_isSearching;
+                            if (!_isSearching) {
+                              _searchQuery = '';
+                            }
+                          });
+                        },
+                        icon: Icon(
+                          _isSearching
+                              ? Icons.close_rounded
+                              : Icons.search_rounded,
+                          color: StudyBuddyColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_isSearching) ...[
+                    const SizedBox(height: 16),
+                    TextField(
+                      autofocus: true,
+                      style: const TextStyle(
                         color: StudyBuddyColors.textPrimary,
                       ),
+                      decoration: InputDecoration(
+                        hintText: 'Search study sets...',
+                        hintStyle: const TextStyle(
+                          color: StudyBuddyColors.textSecondary,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search_rounded,
+                          color: StudyBuddyColors.textSecondary,
+                        ),
+                        filled: true,
+                        fillColor: StudyBuddyColors.cardBackground,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(
-                      Icons.search_rounded,
-                      color: StudyBuddyColors.textPrimary,
-                    ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -154,13 +178,13 @@ class _LibraryScreenState extends State<LibraryScreen>
                 dividerColor: Colors.transparent,
                 padding: const EdgeInsets.all(4),
                 tabs: [
-                  Tab(
+                  const Tab(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.layers_rounded, size: 18),
-                        const SizedBox(width: 6),
-                        Text('Sets (${_studySets.length})'),
+                        Icon(Icons.layers_rounded, size: 18),
+                        SizedBox(width: 6),
+                        Text('Sets'),
                       ],
                     ),
                   ),
@@ -208,53 +232,133 @@ class _LibraryScreenState extends State<LibraryScreen>
             ),
           ],
         ),
-        floatingActionButton: Padding(
-          padding: const EdgeInsets.only(
-            bottom: 80,
-          ), // Increased to clear bottom nav
-          child: _buildFAB(),
-        ),
+        floatingActionButton: _buildFAB(),
       ),
     );
   }
 
   Widget _buildStudySetsTab() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    return StreamBuilder<Result<List<StudySet>>>(
+      stream: _libraryViewModel.watchStudySets(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    if (_studySets.isEmpty) {
-      return _buildEmptyState(
-        icon: Icons.layers_rounded,
-        title: 'No study sets yet',
-        subtitle: 'Create your first study set to get started',
-      );
-    }
+        final result = snapshot.data;
+        if (result == null || result.isFailure) {
+          final errorMessage =
+              (result as Err?)?.failure.message ?? 'Unknown error';
+          return _buildEmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'Error loading sets',
+            subtitle: errorMessage,
+          );
+        }
 
-    return RefreshIndicator(
-      onRefresh: _loadStudySets,
-      color: StudyBuddyColors.primary,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
-        itemCount: _studySets.length,
-        itemBuilder: (context, index) {
-          final set = _studySets[index];
-          return _StudySetCard(
-            studySet: set,
-            onTap: () {
-              Navigator.pushNamed(
-                context,
-                AppRoutes.studySetDetail,
-                arguments: {
-                  'studySetId': set.id,
-                  'title': set.title,
-                  'category': set.category,
-                },
-              );
-            },
-          ).animate().fadeIn(delay: Duration(milliseconds: 50 * index));
-        },
-      ),
+        final allSets = (result as Success<List<StudySet>>).value;
+        if (allSets.isEmpty) {
+          return _buildEmptyState(
+            icon: Icons.layers_rounded,
+            title: 'No study sets yet',
+            subtitle: 'Create your first study set to get started',
+          );
+        }
+
+        // Apply filters locally on the streamed data
+        final filteredSets = allSets.where((set) {
+          final matchesSearch = set.title.toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          );
+          final matchesCategory =
+              _selectedCategory == 'All' ||
+              set.category.toLowerCase() == _selectedCategory.toLowerCase();
+          return matchesSearch && matchesCategory;
+        }).toList();
+
+        return Column(
+          children: [
+            // Category Filters
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: _categories.map((category) {
+                  final isSelected = _selectedCategory == category;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(category),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          _selectedCategory = category;
+                        });
+                      },
+                      backgroundColor: StudyBuddyColors.cardBackground,
+                      selectedColor: StudyBuddyColors.primary.withValues(
+                        alpha: 0.2,
+                      ),
+                      labelStyle: TextStyle(
+                        color: isSelected
+                            ? StudyBuddyColors.primary
+                            : StudyBuddyColors.textSecondary,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(
+                          color: isSelected
+                              ? StudyBuddyColors.primary
+                              : StudyBuddyColors.border,
+                        ),
+                      ),
+                      showCheckmark: false,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // List
+            Expanded(
+              child: filteredSets.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No sets found matching your filters.',
+                        style: TextStyle(color: StudyBuddyColors.textSecondary),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
+                      itemCount: filteredSets.length,
+                      itemBuilder: (context, index) {
+                        final set = filteredSets[index];
+                        return _StudySetCard(
+                          studySet: set,
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.studySetDetail,
+                              arguments: {
+                                'studySetId': set.id,
+                                'title': set.title,
+                                'category': set.category,
+                              },
+                            );
+                          },
+                        ).animate().fadeIn(
+                          delay: Duration(milliseconds: 50 * index),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -337,7 +441,7 @@ class _LibraryScreenState extends State<LibraryScreen>
             }
 
             return ListView.builder(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
               itemCount: notes.length,
               itemBuilder: (context, index) {
                 final note = notes[index];
@@ -445,7 +549,7 @@ class _LibraryScreenState extends State<LibraryScreen>
         }
 
         return GridView.builder(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 12,
@@ -475,6 +579,22 @@ class _LibraryScreenState extends State<LibraryScreen>
                     content: Text('Opening $fileName'),
                     behavior: SnackBarBehavior.floating,
                   ),
+                );
+              },
+              onGenerateFlashcards: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.addFlashcards,
+                  arguments: {
+                    'studySetTitle': 'From $fileName',
+                    'studySetCategory': 'General',
+                    'studySetDescription':
+                        'Automatically generated from $fileName',
+                    'isPrivate': true,
+                    'autoStartAI': true,
+                    // We can pass fileId if we want the service to fetch content
+                    'fileId': file['id'],
+                  },
                 );
               },
               onDelete: () async {
@@ -771,7 +891,7 @@ class _LibraryScreenState extends State<LibraryScreen>
           case 1: // Notes
             label = 'Create Note';
             icon = Icons.edit_note_rounded;
-            onTap = () => Navigator.pushNamed(context, AppRoutes.notes);
+            onTap = () => Navigator.pushNamed(context, AppRoutes.noteEditor);
             break;
           case 2: // Files
             label = 'Upload File';
@@ -780,16 +900,19 @@ class _LibraryScreenState extends State<LibraryScreen>
             break;
         }
 
-        return FloatingActionButton.extended(
-          onPressed: onTap,
-          heroTag: 'library_fab_${_tabController.index}',
-          backgroundColor: StudyBuddyColors.primary,
-          icon: Icon(icon, color: Colors.white),
-          label: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 100.0),
+          child: FloatingActionButton.extended(
+            onPressed: onTap,
+            heroTag: 'library_fab_${_tabController.index}',
+            backgroundColor: StudyBuddyColors.primary,
+            icon: Icon(icon, color: Colors.white),
+            label: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         );

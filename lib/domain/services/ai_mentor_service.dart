@@ -30,6 +30,14 @@ abstract class AIMentorService {
     required List<Subject> subjects,
   });
 
+  /// Generates a single study task suggestion based on a specific topic.
+  Future<StudyTask> suggestTask({
+    required String subjectId,
+    required String subjectName,
+    required String? topic,
+    required int durationMinutes,
+  });
+
   /// Generates encouragement after task completion.
   Future<AIInsight> generateCompletionFeedback({
     required String taskTitle,

@@ -41,6 +41,7 @@ class AddFlashcardsScreen extends StatefulWidget {
   final String studySetCategory;
   final String studySetDescription;
   final String? subjectId; // Added subjectId
+  final String? fileId; // Added fileId
   final bool isPrivate;
   final bool autoStartAI;
 
@@ -50,6 +51,7 @@ class AddFlashcardsScreen extends StatefulWidget {
     required this.studySetCategory,
     required this.studySetDescription,
     this.subjectId, // Added
+    this.fileId, // Added
     required this.isPrivate,
     this.autoStartAI = false,
   });
@@ -185,11 +187,17 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
         },
       );
 
-      final results = await _aiMentorService.generateFlashcardsFromTopics(
-        topics: contextTopics, // Now includes real subject context!
-        difficulty: 'medium',
-        count: count,
-      );
+      final results = widget.fileId != null
+          ? await _aiMentorService.generateFlashcardsFromFile(
+              fileId: widget.fileId!,
+              difficulty: 'medium',
+              count: count,
+            )
+          : await _aiMentorService.generateFlashcardsFromTopics(
+              topics: contextTopics, // Now includes real subject context!
+              difficulty: 'medium',
+              count: count,
+            );
 
       // Convert to FlashcardData
       final newCards = results

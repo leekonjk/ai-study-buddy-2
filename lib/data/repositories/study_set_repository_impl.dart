@@ -30,8 +30,6 @@ class StudySetRepositoryImpl implements StudySetRepository {
       final querySnapshot = await _firestore
           .collection(_studySetsCollection)
           .where('creatorId', isEqualTo: _currentStudentId)
-          // Removed orderBy to avoid index requirement "FAILED_PRECONDITION"
-          // We will sort in memory below
           .get();
 
       final studySets = querySnapshot.docs.map((doc) {
@@ -51,6 +49,28 @@ class StudySetRepositoryImpl implements StudySetRepository {
       );
     } catch (e) {
       return Err(NetworkFailure(message: 'Unexpected error: $e'));
+    }
+  }
+
+  @override
+  Stream<Result<List<StudySet>>> watchAllStudySets() {
+    try {
+      return _firestore
+          .collection(_studySetsCollection)
+          .where('creatorId', isEqualTo: _currentStudentId)
+          .snapshots()
+          .map((snapshot) {
+            final studySets = snapshot.docs.map((doc) {
+              return _mapDocumentToStudySet(doc);
+            }).toList();
+
+            // Sort in memory
+            studySets.sort((a, b) => b.lastUpdated.compareTo(a.lastUpdated));
+
+            return Success(studySets);
+          });
+    } catch (e) {
+      return Stream.value(Err(NetworkFailure(message: 'Unexpected error: $e')));
     }
   }
 

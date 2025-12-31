@@ -1,46 +1,20 @@
 /// Dashboard ViewModel.
 /// Manages state for the main dashboard screen.
-///
-/// Layer: Presentation
-/// Responsibility: Aggregate and expose dashboard data to UI.
-/// Inputs: Study plan, tasks, focus sessions.
-/// Outputs: Dashboard state with quick actions and status.
-///
-/// Dependencies: StudyPlanRepository, FocusSessionRepository, AcademicRepository
 library;
 
+import 'dart:async';
+
+import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/entities/academic_profile.dart';
 import 'package:studnet_ai_buddy/domain/entities/focus_session.dart';
 import 'package:studnet_ai_buddy/domain/entities/study_task.dart';
-import 'package:studnet_ai_buddy/domain/entities/subject.dart';
 import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/focus_session_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/study_plan_repository.dart';
-import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
-import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/services/local_storage_service.dart';
+import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 
-/// Subject with progress tracking for dashboard display.
-class SubjectProgress {
-  final String subjectId;
-  final String subjectName;
-  final int completedTasks;
-  final int totalTasks;
-  final int focusMinutes;
-
-  const SubjectProgress({
-    required this.subjectId,
-    required this.subjectName,
-    required this.completedTasks,
-    required this.totalTasks,
-    required this.focusMinutes,
-  });
-
-  /// Progress as a value between 0.0 and 1.0.
-  double get progress => totalTasks > 0 ? completedTasks / totalTasks : 0.0;
-}
-
-/// Immutable state for dashboard.
+/// Immutable state for the Dashboard.
 class DashboardState {
   final ViewState viewState;
   final String greetingName;
@@ -56,7 +30,7 @@ class DashboardState {
   final String? errorMessage;
   final int weeklyStudyMinutes;
   final int weeklyGoalMinutes;
-  final int dailyTaskGoal; // Added
+  final int dailyTaskGoal;
 
   const DashboardState({
     this.viewState = ViewState.initial,
@@ -72,8 +46,8 @@ class DashboardState {
     this.tipOfTheDay = '',
     this.errorMessage,
     this.weeklyStudyMinutes = 0,
-    this.weeklyGoalMinutes = 900, // Default 15 hours
-    this.dailyTaskGoal = 5,
+    this.weeklyGoalMinutes = 0,
+    this.dailyTaskGoal = 0,
   });
 
   DashboardState copyWith({
@@ -112,39 +86,26 @@ class DashboardState {
     );
   }
 
-  /// Whether the ViewModel is currently loading.
   bool get isLoading => viewState == ViewState.loading;
-
-  /// Whether there is an error.
-  bool get hasError => errorMessage != null;
-
-  /// Pending tasks for today (not completed).
-  List<StudyTask> get pendingTasks {
-    return todayTasks.where((t) => !t.isCompleted).toList();
-  }
-
-  /// Completed tasks for today.
-  List<StudyTask> get completedTasks {
-    return todayTasks.where((t) => t.isCompleted).toList();
-  }
-
-  /// Today's completion percentage (0.0 to 1.0).
-  double get todayProgress {
-    if (todayTasks.isEmpty) return 0.0;
-    return completedTasks.length / todayTasks.length;
-  }
-
-  /// Whether all tasks for today are complete.
-  bool get allTasksComplete => todayTasks.isNotEmpty && pendingTasks.isEmpty;
-
-  /// Total estimated minutes for today's remaining tasks.
-  int get remainingMinutes {
-    return pendingTasks.fold(0, (sum, task) => sum + task.estimatedMinutes);
-  }
+  bool get hasError => viewState == ViewState.error;
 }
 
-/// ViewModel for dashboard screen.
-/// Coordinates with repositories to load and display dashboard data.
+class SubjectProgress {
+  final String subjectId;
+  final String subjectName;
+  final int completedTasks;
+  final int totalTasks;
+  final int focusMinutes;
+
+  SubjectProgress({
+    required this.subjectId,
+    required this.subjectName,
+    required this.completedTasks,
+    required this.totalTasks,
+    required this.focusMinutes,
+  });
+}
+
 class DashboardViewModel extends BaseViewModel {
   final StudyPlanRepository _studyPlanRepository;
   final FocusSessionRepository _focusSessionRepository;
@@ -161,12 +122,8 @@ class DashboardViewModel extends BaseViewModel {
   DashboardState _state = const DashboardState();
   DashboardState get state => _state;
 
-  // Cache for subjects map
-  Map<String, Subject> _subjectsMap = {};
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Data Loading
-  // ─────────────────────────────────────────────────────────────────────────
+  // Cache subjects for name lookup
+  Map<String, dynamic> _subjectsMap = {};
 
   /// Loads all dashboard data.
   Future<void> loadDashboard() async {
@@ -180,19 +137,15 @@ class DashboardViewModel extends BaseViewModel {
     profileResult.fold(
       onSuccess: (p) {
         profile = p;
-        // developer.log('DashboardViewModel: Loaded profile for ${p?.studentName ?? 'null'}');
       },
-      onFailure: (f) {
-        // developer.log('DashboardViewModel: Failed to load profile: ${f.message}');
-      },
+      onFailure: (f) {},
     );
 
     // Load preferences for goals
     final prefs = getIt<LocalStorageService>();
     final weeklyGoalHours = await prefs.getInt('pref_weekly_goal') ?? 15;
     final weeklyGoalMinutes = weeklyGoalHours * 60;
-    final dailyTaskGoal =
-        await prefs.getInt('pref_daily_task_goal') ?? 5; // Load daily goal
+    final dailyTaskGoal = await prefs.getInt('pref_daily_task_goal') ?? 5;
 
     // Load subjects for mapping
     final subjectsResult = await _academicRepository.getEnrolledSubjects();
@@ -204,21 +157,8 @@ class DashboardViewModel extends BaseViewModel {
       onFailure: (_) {},
     );
 
-    // Load today's tasks
-    final tasksResult = await _studyPlanRepository.getTodaysTasks();
-    List<StudyTask> todayTasks = [];
-
-    tasksResult.fold(
-      onSuccess: (tasks) => todayTasks = tasks,
-      onFailure: (failure) {
-        _state = _state.copyWith(
-          viewState: ViewState.error,
-          errorMessage: failure.message,
-        );
-        notifyListeners();
-        return;
-      },
-    );
+    // Start listening to real-time plan updates
+    _startListeningToPlan();
 
     // Load focus minutes for today
     final focusResult = await _focusSessionRepository.getTodaysFocusMinutes();
@@ -261,30 +201,17 @@ class DashboardViewModel extends BaseViewModel {
       onFailure: (_) {},
     );
 
-    // Build subject progress list
-    final subjectProgress = _buildSubjectProgress(todayTasks);
-
-    // Identify primary focus task (first pending high-priority task)
-    final focusTask = _identifyFocusTask(todayTasks);
-
-    // Generate greeting
+    // Build initial state (tasks will update via stream)
     final greeting = _generateGreeting(profile?.studentName);
-
-    // Count completed tasks
-    final completedCount = todayTasks.where((t) => t.isCompleted).length;
-
-    // Get tip of the day
     final tip = _getTipOfTheDay();
 
     _state = _state.copyWith(
       viewState: ViewState.loaded,
       greetingName: profile?.studentName ?? 'Student',
       greetingMessage: greeting,
-      focusTask: focusTask,
-      todayTasks: todayTasks,
-      activeSubjects: subjectProgress,
+      activeSubjects: [], // Will populate from stream
       totalStudyMinutes: focusMinutes,
-      completedTasksCount: completedCount,
+      completedTasksCount: 0, // Will populate from stream
       currentStreakDays: streakDays,
       recentSessions: recentSessions,
       tipOfTheDay: tip,
@@ -479,6 +406,41 @@ class DashboardViewModel extends BaseViewModel {
         .difference(DateTime(DateTime.now().year))
         .inDays;
     return tips[dayOfYear % tips.length];
+  }
+
+  @override
+  void dispose() {
+    _planSubscription?.cancel();
+    super.dispose();
+  }
+
+  StreamSubscription? _planSubscription;
+
+  void _startListeningToPlan() {
+    if (_planSubscription != null) return;
+
+    _planSubscription = _studyPlanRepository.getPlanStream().listen((result) {
+      result.fold(
+        onSuccess: (plan) {
+          final tasks = plan?.tasksForDate(DateTime.now()) ?? [];
+
+          final subjectProgress = _buildSubjectProgress(tasks);
+          final focusTask = _identifyFocusTask(tasks);
+          final completedCount = tasks.where((t) => t.isCompleted).length;
+
+          _state = _state.copyWith(
+            todayTasks: tasks,
+            activeSubjects: subjectProgress,
+            focusTask: focusTask,
+            completedTasksCount: completedCount,
+          );
+          notifyListeners();
+        },
+        onFailure: (_) {
+          // Keep existing state on stream failure or log
+        },
+      );
+    });
   }
 
   /// Clears any error message.

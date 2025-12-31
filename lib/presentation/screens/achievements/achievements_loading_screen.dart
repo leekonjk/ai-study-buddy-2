@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/repositories/achievement_repository.dart';
-import 'package:studnet_ai_buddy/core/utils/result.dart';
+
 import 'package:studnet_ai_buddy/presentation/screens/achievements/achievements_screen.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/common/lottie_loading.dart';
 

@@ -283,19 +283,4 @@ class _CreateNoteBottomSheetState extends State<CreateNoteBottomSheet> {
       ),
     );
   }
-
-  /// Shows the create note bottom sheet
-  static Future<bool?> show(
-    BuildContext context, {
-    required List<Subject> subjects,
-    required Function(String title, String content, String? subjectId) onSave,
-  }) {
-    return showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) =>
-          CreateNoteBottomSheet(subjects: subjects, onSave: onSave),
-    );
-  }
 }

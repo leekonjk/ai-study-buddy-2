@@ -10,6 +10,7 @@ class ModernFileCard extends StatelessWidget {
   final DateTime uploadedAt;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback? onGenerateFlashcards;
   final String? thumbnailUrl;
 
   const ModernFileCard({
@@ -20,6 +21,7 @@ class ModernFileCard extends StatelessWidget {
     required this.uploadedAt,
     required this.onTap,
     required this.onDelete,
+    this.onGenerateFlashcards,
     this.thumbnailUrl,
   });
 
@@ -147,6 +149,19 @@ class ModernFileCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
+
+                  // Generate Flashcards Button
+                  if (onGenerateFlashcards != null)
+                    IconButton(
+                      icon: const Icon(Icons.auto_awesome_motion_rounded),
+                      iconSize: 20,
+                      color: AppColors.secondary,
+                      onPressed: onGenerateFlashcards,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Generate Flashcards',
+                    ),
+                  const SizedBox(width: 12),
 
                   // Delete Button
                   IconButton(

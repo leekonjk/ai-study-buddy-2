@@ -317,6 +317,7 @@ void _registerViewModels() {
   getIt.registerFactory<LibraryViewModel>(
     () => LibraryViewModel(
       fileRepository: getIt<FileRepository>(),
+      studySetRepository: getIt<StudySetRepository>(),
       auth: getIt<FirebaseAuth>(),
     ),
   );

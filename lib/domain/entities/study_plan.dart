@@ -32,7 +32,7 @@ class StudyPlan {
   /// Returns tasks for a specific date.
   List<StudyTask> tasksForDate(DateTime date) {
     return tasks.where((task) {
-      final taskDate = task.date;
+      final taskDate = task.date.toLocal();
       return taskDate.year == date.year &&
           taskDate.month == date.month &&
           taskDate.day == date.day;

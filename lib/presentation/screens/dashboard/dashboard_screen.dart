@@ -12,10 +12,19 @@ import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/main_shell.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
+  final DashboardViewModel? viewModel;
+
+  const DashboardScreen({super.key, this.viewModel});
 
   @override
   Widget build(BuildContext context) {
+    if (viewModel != null) {
+      return ChangeNotifierProvider.value(
+        value: viewModel!,
+        child: const _DashboardContent(),
+      );
+    }
+
     return ChangeNotifierProvider<DashboardViewModel>(
       create: (_) => getIt<DashboardViewModel>()..loadDashboard(),
       child: const _DashboardContent(),
@@ -23,11 +32,21 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-class _DashboardContent extends StatelessWidget {
+class _DashboardContent extends StatefulWidget {
   const _DashboardContent();
 
   @override
+  State<_DashboardContent> createState() => _DashboardContentState();
+}
+
+class _DashboardContentState extends State<_DashboardContent>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     final state = context.watch<DashboardViewModel>().state;
 
     return Scaffold(
@@ -146,9 +165,7 @@ class _DashboardContent extends StatelessWidget {
                               style: AppTypography.headline3,
                             ),
                             TextButton(
-                              onPressed: () => Navigator.of(
-                                context,
-                              ).pushNamed('/study-plan'),
+                              onPressed: () => MainShell.switchTab(context, 2),
                               child: Text(
                                 'View All',
                                 style: AppTypography.body2.copyWith(
@@ -168,10 +185,23 @@ class _DashboardContent extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                             horizontal: AppSpacing.md,
                           ),
-                          child: _TaskCard(
-                            task: state.focusTask!,
-                          ).animate().fadeIn(delay: 300.ms, duration: 300.ms),
-                        ),
+                          child: InkWell(
+                            onTap: () {
+                              if (state.focusTask != null) {
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.focusSession,
+                                  arguments: {
+                                    'taskId': state.focusTask!.id,
+                                    'subjectId': state.focusTask!.subjectId,
+                                  },
+                                );
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            child: _TaskCard(task: state.focusTask!),
+                          ),
+                        ).animate().fadeIn(delay: 300.ms, duration: 300.ms),
                       )
                     else
                       SliverToBoxAdapter(
@@ -590,7 +620,7 @@ class _QuickActionsGrid extends StatelessWidget {
               icon: Icons.note_alt_rounded,
               label: 'Notes',
               color: Colors.green,
-              onTap: () => Navigator.pushNamed(context, AppRoutes.notes),
+              onTap: () => MainShell.switchTab(context, 1),
             ),
             _ActionButton(
               icon: Icons.bar_chart_rounded,
@@ -733,65 +763,85 @@ class _RecentActivityList extends StatelessWidget {
       children: sessions.map((session) {
         return Container(
           margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.shadow.withValues(alpha: 0.02),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (session.subjectId != null &&
+                    session.subjectId!.isNotEmpty) {
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.subjectDetail,
+                    arguments: session.subjectId,
+                  );
+                }
+              },
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.secondary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  color: AppColors.cardBackground,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(
+                    color: AppColors.border.withValues(alpha: 0.6),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.shadow.withValues(alpha: 0.02),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: const Icon(
-                  Icons.history_rounded,
-                  color: AppColors.secondary,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      (session.subjectId ?? '').isEmpty
-                          ? 'Study Session'
-                          : session.subjectId!,
-                      style: AppTypography.subtitle1.copyWith(
-                        fontWeight: FontWeight.w600,
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: const Icon(
+                        Icons.history_rounded,
+                        color: AppColors.secondary,
+                        size: 20,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            (session.subjectId ?? '').isEmpty
+                                ? 'Study Session'
+                                : session.subjectId!,
+                            style: AppTypography.subtitle1.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _timeAgo(session.endTime ?? session.startTime),
+                            style: AppTypography.body2.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Text(
-                      _timeAgo(session.endTime ?? session.startTime),
-                      style: AppTypography.body2.copyWith(
-                        color: AppColors.textSecondary,
+                      '${(session.actualDurationMinutes ?? 0)}m',
+                      style: AppTypography.subtitle2.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
-              Text(
-                '${(session.actualDurationMinutes ?? 0)}m',
-                style: AppTypography.subtitle2.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+            ),
           ),
         );
       }).toList(),

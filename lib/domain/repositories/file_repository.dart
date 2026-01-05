@@ -15,6 +15,15 @@ abstract class FileRepository {
     required File file,
     required String userId,
     required String originalName,
+    String? textContent,
+  });
+
+  /// Uploads a file with progress stream.
+  Stream<double> uploadFileWithProgress({
+    required File file,
+    required String userId,
+    required String originalName,
+    String? textContent,
   });
 
   /// Fetches list of files for a user.
@@ -22,4 +31,7 @@ abstract class FileRepository {
 
   /// Deletes a file.
   Future<void> deleteFile(String userId, String fileId, String storagePath);
+
+  /// Fetches a single file.
+  Future<Map<String, dynamic>?> getFile(String userId, String fileId);
 }

@@ -9,6 +9,7 @@ abstract class NoteRepository {
     required String content,
     required String subject,
     required String colorHex,
+    String? studySetId,
   });
   Future<Result<void>> updateNote(Note note);
   Future<Result<void>> deleteNote(String id);

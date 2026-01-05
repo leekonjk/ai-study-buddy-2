@@ -10,6 +10,7 @@ import 'package:studnet_ai_buddy/presentation/screens/onboarding/onboarding_flow
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart'; // Added import
 
 /// Profile setup screen for collecting user information.
 class ProfileSetupScreen extends StatefulWidget {
@@ -256,12 +257,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
+                          child: LoadingIndicator(size: 20),
                         )
                       : const Text(
                           'Continue',

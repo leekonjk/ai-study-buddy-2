@@ -44,115 +44,133 @@ class _EducationStepState extends State<EducationStep> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          const SizedBox(height: 40),
-          // Mascot and message
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const MascotWidget(
-                expression: MascotExpression.speaking,
-                size: MascotSize.medium,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ChatBubble(
-                  text:
-                      "Tell me about your education. What university are you studying at, and what's your program?",
-                  isUser: false,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          // Inputs
-          TextField(
-            controller: _universityController,
-            style: const TextStyle(color: StudyBuddyColors.textPrimary),
-            decoration: StudyBuddyDecorations.inputDecoration(
-              hintText: 'University/Institution',
-              prefixIcon: const Icon(
-                Icons.school_outlined,
-                color: StudyBuddyColors.textSecondary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _programController,
-            style: const TextStyle(color: StudyBuddyColors.textPrimary),
-            decoration: StudyBuddyDecorations.inputDecoration(
-              hintText: 'Program/Major',
-              prefixIcon: const Icon(
-                Icons.menu_book_outlined,
-                color: StudyBuddyColors.textSecondary,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Semester Dropdown
-          DropdownButtonFormField<int>(
-            // value: _selectedSemester, // Deprecated, using initialValue and FormField state
-            initialValue: _selectedSemester,
-            decoration: StudyBuddyDecorations.inputDecoration(
-              hintText: 'Current Semester',
-              prefixIcon: const Icon(
-                Icons.calendar_today_rounded,
-                color: StudyBuddyColors.textSecondary,
-              ),
-            ),
-            items: List.generate(8, (index) => index + 1)
-                .map(
-                  (s) => DropdownMenuItem(
-                    value: s,
-                    child: Text(
-                      'Semester $s',
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 40),
+                    // Mascot and message
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const MascotWidget(
+                          expression: MascotExpression.speaking,
+                          size: MascotSize.medium,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ChatBubble(
+                            text:
+                                "Tell me about your education. What university are you studying at, and what's your program?",
+                            isUser: false,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    // Inputs
+                    TextField(
+                      controller: _universityController,
                       style: const TextStyle(
                         color: StudyBuddyColors.textPrimary,
                       ),
+                      decoration: StudyBuddyDecorations.inputDecoration(
+                        hintText: 'University/Institution',
+                        prefixIcon: const Icon(
+                          Icons.school_outlined,
+                          color: StudyBuddyColors.textSecondary,
+                        ),
+                      ),
                     ),
-                  ),
-                )
-                .toList(),
-            onChanged: (val) {
-              setState(() {
-                _selectedSemester = val;
-              });
-            },
-            dropdownColor: StudyBuddyColors.cardBackground,
-            icon: const Icon(
-              Icons.arrow_drop_down_rounded,
-              color: StudyBuddyColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed:
-                  _universityController.text.trim().isNotEmpty &&
-                      _programController.text.trim().isNotEmpty
-                  ? _handleNext
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: StudyBuddyColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: StudyBuddyDecorations.borderRadiusFull,
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _programController,
+                      style: const TextStyle(
+                        color: StudyBuddyColors.textPrimary,
+                      ),
+                      decoration: StudyBuddyDecorations.inputDecoration(
+                        hintText: 'Program/Major',
+                        prefixIcon: const Icon(
+                          Icons.menu_book_outlined,
+                          color: StudyBuddyColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Semester Dropdown
+                    DropdownButtonFormField<int>(
+                      value: _selectedSemester,
+                      decoration: StudyBuddyDecorations.inputDecoration(
+                        hintText: 'Current Semester',
+                        prefixIcon: const Icon(
+                          Icons.calendar_today_rounded,
+                          color: StudyBuddyColors.textSecondary,
+                        ),
+                      ),
+                      items: List.generate(8, (index) => index + 1)
+                          .map(
+                            (s) => DropdownMenuItem(
+                              value: s,
+                              child: Text(
+                                'Semester $s',
+                                style: const TextStyle(
+                                  color: StudyBuddyColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedSemester = val;
+                        });
+                      },
+                      dropdownColor: StudyBuddyColors.cardBackground,
+                      icon: const Icon(
+                        Icons.arrow_drop_down_rounded,
+                        color: StudyBuddyColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed:
+                            _universityController.text.trim().isNotEmpty &&
+                                _programController.text.trim().isNotEmpty
+                            ? _handleNext
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: StudyBuddyColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                StudyBuddyDecorations.borderRadiusFull,
+                          ),
+                        ),
+                        child: const Text(
+                          'Continue',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: const Text(
-                'Continue',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

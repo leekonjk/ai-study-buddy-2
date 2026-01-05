@@ -17,7 +17,6 @@ import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/education
 import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/subjects_step.dart';
 import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/goals_step.dart';
 import 'package:studnet_ai_buddy/domain/entities/subject.dart';
-import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/upload_step.dart';
 import 'package:studnet_ai_buddy/presentation/screens/onboarding/steps/completion_step.dart';
 
 /// Multi-step onboarding flow.
@@ -39,7 +38,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     const EducationStep(),
     const SubjectsStep(),
     const GoalsStep(),
-    const UploadStep(),
     const CompletionStep(),
   ];
 

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 // Screens
 import 'package:studnet_ai_buddy/presentation/auth/auth_gate.dart';
 import 'package:studnet_ai_buddy/presentation/auth/login_screen.dart';
+import 'package:studnet_ai_buddy/presentation/auth/create_account_screen.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/app_transitions.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/main_shell.dart';
 import 'package:studnet_ai_buddy/presentation/screens/calendar/calendar_screen.dart';
@@ -45,6 +46,7 @@ class AppRoutes {
 
   static const String authGate = '/auth';
   static const String login = '/login';
+  static const String createAccount = '/create-account';
   static const String introOnboarding = '/intro';
   static const String onboardingFlow = '/onboarding';
   static const String profileSetup = '/profile-setup';
@@ -88,6 +90,9 @@ class AppRouter {
 
       case AppRoutes.login:
         return AppFadeSlideRoute(page: const LoginScreen());
+
+      case AppRoutes.createAccount:
+        return AppFadeSlideRoute(page: const CreateAccountScreen());
 
       case AppRoutes.introOnboarding:
         return AppFadeRoute(page: const IntroOnboardingScreen());

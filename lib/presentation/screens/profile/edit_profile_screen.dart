@@ -4,6 +4,7 @@ import 'package:studnet_ai_buddy/di/service_locator.dart';
 
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/profile/profile_viewmodel.dart'; // Ensure VM exists
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
 
@@ -115,7 +116,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         backgroundColor: Colors.transparent,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: LoadingIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(

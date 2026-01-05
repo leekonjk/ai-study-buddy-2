@@ -8,6 +8,7 @@ import 'package:studnet_ai_buddy/domain/entities/subject.dart';
 import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart'; // Added import
 
 /// Detailed view of a subject with topics and study materials.
 class SubjectDetailScreen extends StatefulWidget {
@@ -59,7 +60,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
         ),
         child: SafeArea(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: LoadingIndicator())
               : _subject == null
               ? _buildNotFound()
               : _buildContent(),

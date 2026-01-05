@@ -4,6 +4,7 @@ library;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart'; // Added for debugPrint
 import 'package:studnet_ai_buddy/core/errors/failures.dart';
 import 'package:studnet_ai_buddy/core/utils/result.dart';
 import 'package:studnet_ai_buddy/domain/entities/study_set.dart';
@@ -148,7 +149,7 @@ class StudySetRepositoryImpl implements StudySetRepository {
         return Err(const NetworkFailure(message: 'User not logged in'));
       }
 
-      print(
+      debugPrint(
         'Creating StudySet: ID=$studySetId, User=$userId, Title=$title',
       ); // Debug log
 
@@ -164,7 +165,7 @@ class StudySetRepositoryImpl implements StudySetRepository {
       );
 
       final data = _mapStudySetToDocument(studySet);
-      print('StudySet Data: $data'); // Debug log
+      debugPrint('StudySet Data: $data'); // Debug log
 
       await _firestore
           .collection(_studySetsCollection)
@@ -173,7 +174,7 @@ class StudySetRepositoryImpl implements StudySetRepository {
 
       return Success(studySet);
     } on FirebaseException catch (e) {
-      print(
+      debugPrint(
         'Firebase Error creating StudySet: code=${e.code}, message=${e.message}',
       );
       return Err(

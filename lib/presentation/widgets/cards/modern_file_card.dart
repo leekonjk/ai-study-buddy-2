@@ -8,7 +8,7 @@ class ModernFileCard extends StatelessWidget {
   final String fileType;
   final int fileSizeBytes;
   final DateTime uploadedAt;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final VoidCallback onDelete;
   final VoidCallback? onGenerateFlashcards;
   final String? thumbnailUrl;
@@ -19,7 +19,7 @@ class ModernFileCard extends StatelessWidget {
     required this.fileType,
     required this.fileSizeBytes,
     required this.uploadedAt,
-    required this.onTap,
+    this.onTap,
     required this.onDelete,
     this.onGenerateFlashcards,
     this.thumbnailUrl,
@@ -86,41 +86,48 @@ class ModernFileCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
 
-              // File Metadata
-              Row(
+              // File Metadata - Stacked for better space usage
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.insert_drive_file_rounded,
-                    size: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      fileSize,
-                      style: AppTypography.caption.copyWith(
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.insert_drive_file_rounded,
+                        size: 14,
                         color: AppColors.textSecondary,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          fileSize,
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(
-                    width: 8,
-                  ), // Fixed spacing instead of Spacer to avoid layout issues in small spaces
-                  Icon(
-                    Icons.access_time_rounded,
-                    size: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      uploadDate,
-                      style: AppTypography.caption.copyWith(
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 14,
                         color: AppColors.textSecondary,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          uploadDate,
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -128,49 +135,68 @@ class ModernFileCard extends StatelessWidget {
 
               // Actions Row
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // File Type Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: fileColor.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                    ),
-                    child: Text(
-                      fileType.toUpperCase(),
-                      style: AppTypography.caption.copyWith(
-                        color: fileColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10,
+                  // File Type Badge - Flexible to prevent overflow
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: fileColor.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: Text(
+                        fileType.toUpperCase(),
+                        style: AppTypography.caption.copyWith(
+                          color: fileColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ),
-                  const Spacer(),
 
-                  // Generate Flashcards Button
-                  if (onGenerateFlashcards != null)
-                    IconButton(
-                      icon: const Icon(Icons.auto_awesome_motion_rounded),
-                      iconSize: 20,
-                      color: AppColors.secondary,
-                      onPressed: onGenerateFlashcards,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      tooltip: 'Generate Flashcards',
-                    ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 4),
 
-                  // Delete Button
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    iconSize: 20,
-                    color: AppColors.error,
-                    onPressed: onDelete,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                  // Actions - Fixed size row
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Generate Flashcards Button
+                      if (onGenerateFlashcards != null)
+                        IconButton(
+                          icon: const Icon(Icons.auto_awesome_motion_rounded),
+                          iconSize: 18,
+                          color: AppColors.secondary,
+                          onPressed: onGenerateFlashcards,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 24,
+                            minHeight: 24,
+                          ),
+                          tooltip: 'Generate Flashcards',
+                        ),
+                      if (onGenerateFlashcards != null)
+                        const SizedBox(width: 4),
+
+                      // Delete Button
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        iconSize: 18,
+                        color: AppColors.error,
+                        onPressed: onDelete,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 24,
+                          minHeight: 24,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

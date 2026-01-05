@@ -5,12 +5,12 @@ import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/common/lottie_loading.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/dashboard/dashboard_viewmodel.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:studnet_ai_buddy/presentation/widgets/cards/enhanced_stat_card.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/cards/minimal_tip_card.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/cards/circular_progress_card.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/cards/ai_mentor_card.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/main_shell.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/cards/modern_note_card.dart';
 
 class DashboardScreen extends StatelessWidget {
   final DashboardViewModel? viewModel;
@@ -189,6 +189,18 @@ class _DashboardContentState extends State<_DashboardContent>
                           child: InkWell(
                             onTap: () {
                               if (state.focusTask != null) {
+                                if (state.focusTask!.isCompleted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Great job! This task is already completed.',
+                                      ),
+                                      backgroundColor: AppColors.success,
+                                    ),
+                                  );
+                                  return;
+                                }
+
                                 Navigator.pushNamed(
                                   context,
                                   AppRoutes.focusSession,
@@ -279,6 +291,52 @@ class _DashboardContentState extends State<_DashboardContent>
                         ).animate().fadeIn(delay: 500.ms, duration: 300.ms),
                       ),
                     ),
+
+                    // Recent Notes
+                    if (state.recentNotes.isNotEmpty) ...[
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.md,
+                            AppSpacing.xl,
+                            AppSpacing.md,
+                            AppSpacing.sm,
+                          ),
+                          child: Text(
+                            'Recent Notes',
+                            style: AppTypography.headline3,
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: 220, // Increased to accommodate card content
+                          child: ListView.separated(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                            ),
+                            scrollDirection: Axis.horizontal,
+                            itemCount: state.recentNotes.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(width: AppSpacing.md),
+                            itemBuilder: (context, index) {
+                              final note = state.recentNotes[index];
+                              return SizedBox(
+                                width: 260,
+                                child: ModernNoteCard(
+                                  note: note,
+                                  onTap: () => Navigator.pushNamed(
+                                    context,
+                                    AppRoutes.noteEditor,
+                                    arguments: note,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ).animate().fadeIn(delay: 550.ms, duration: 300.ms),
+                      ),
+                    ],
 
                     // Recent Activity
                     if (state.recentSessions.isNotEmpty) ...[
@@ -406,48 +464,6 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          // Notification bell with badge
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppColors.border.withValues(alpha: 0.5),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: Stack(
-                children: [
-                  const Icon(Icons.notifications_outlined),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: AppColors.error,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.cardBackground,
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              color: AppColors.textPrimary,
-              onPressed: () {},
-            ),
-          ),
         ],
       ),
     );
@@ -502,12 +518,12 @@ class _ProgressSection extends StatelessWidget {
         ),
         const SizedBox(width: AppSpacing.md),
         Expanded(
-          child: EnhancedStatCard(
-            icon: Icons.local_fire_department_rounded,
-            value: '$streakDays',
+          child: CircularProgressCard(
             label: 'Streak',
-            primaryColor: AppColors.warning,
-            secondaryColor: Colors.deepOrange,
+            current: streakDays,
+            target: 7, // Weekly streak goal
+            icon: Icons.local_fire_department_rounded,
+            color: AppColors.warning,
           ),
         ),
       ],
@@ -522,12 +538,15 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompleted = task.isCompleted;
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.lg),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.15),
+            color: (isCompleted ? AppColors.success : AppColors.primary)
+                .withValues(alpha: 0.15),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -538,7 +557,12 @@ class _TaskCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: AppColors.cardBackground,
-            border: Border.all(color: AppColors.border, width: 1),
+            border: Border.all(
+              color: isCompleted
+                  ? AppColors.success.withValues(alpha: 0.3)
+                  : AppColors.border,
+              width: 1,
+            ),
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
           child: IntrinsicHeight(
@@ -549,7 +573,9 @@ class _TaskCard extends StatelessWidget {
                   width: 4,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.secondary],
+                      colors: isCompleted
+                          ? [AppColors.success, Color(0xFF34D399)]
+                          : [AppColors.primary, AppColors.secondary],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                     ),
@@ -566,18 +592,31 @@ class _TaskCard extends StatelessWidget {
                           height: 52,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [
-                                AppColors.primary.withValues(alpha: 0.2),
-                                AppColors.secondary.withValues(alpha: 0.1),
-                              ],
+                              colors: isCompleted
+                                  ? [
+                                      AppColors.success.withValues(alpha: 0.2),
+                                      const Color(
+                                        0xFF34D399,
+                                      ).withValues(alpha: 0.1),
+                                    ]
+                                  : [
+                                      AppColors.primary.withValues(alpha: 0.2),
+                                      AppColors.secondary.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                    ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(AppRadius.md),
                           ),
-                          child: const Icon(
-                            Icons.task_alt_rounded,
-                            color: AppColors.primary,
+                          child: Icon(
+                            isCompleted
+                                ? Icons.check_circle_rounded
+                                : Icons.task_alt_rounded,
+                            color: isCompleted
+                                ? AppColors.success
+                                : AppColors.primary,
                             size: 26,
                           ),
                         ),
@@ -591,6 +630,12 @@ class _TaskCard extends StatelessWidget {
                                 task.title ?? 'Task',
                                 style: AppTypography.subtitle1.copyWith(
                                   fontWeight: FontWeight.w600,
+                                  decoration: isCompleted
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: isCompleted
+                                      ? AppColors.textSecondary
+                                      : AppColors.textPrimary,
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -604,24 +649,30 @@ class _TaskCard extends StatelessWidget {
                                       vertical: 4,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.secondary.withValues(
-                                        alpha: 0.15,
-                                      ),
+                                      color:
+                                          (isCompleted
+                                                  ? AppColors.success
+                                                  : AppColors.secondary)
+                                              .withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(
                                         AppRadius.sm,
                                       ),
                                     ),
                                     child: Text(
-                                      'Due Today',
+                                      isCompleted ? 'Completed' : 'Due Today',
                                       style: AppTypography.caption.copyWith(
-                                        color: AppColors.secondary,
+                                        color: isCompleted
+                                            ? AppColors.success
+                                            : AppColors.secondary,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'Start Focus Session',
+                                    isCompleted
+                                        ? 'Great Job!'
+                                        : 'Start Focus Session',
                                     style: AppTypography.caption.copyWith(
                                       color: AppColors.textTertiary,
                                     ),
@@ -631,19 +682,20 @@ class _TaskCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                        if (!isCompleted)
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.play_arrow_rounded,
-                            color: AppColors.primary,
-                            size: 20,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -665,10 +717,10 @@ class _QuickActionsGrid extends StatelessWidget {
         // Primary Actions (3 most-used)
         Expanded(
           child: _ActionButton(
-            icon: Icons.quiz_rounded,
-            label: 'Quiz',
+            icon: Icons.library_books_rounded,
+            label: 'Library',
             color: AppColors.primary,
-            onTap: () => Navigator.pushNamed(context, AppRoutes.quizSetup),
+            onTap: () => Navigator.pushNamed(context, AppRoutes.library),
           ),
         ),
         const SizedBox(width: AppSpacing.md),

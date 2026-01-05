@@ -79,6 +79,7 @@ class NoteRepositoryImpl implements NoteRepository {
     required String content,
     required String subject,
     required String colorHex,
+    String? studySetId,
   }) async {
     try {
       final id = _firestore.collection(_collection).doc().id;
@@ -90,6 +91,7 @@ class NoteRepositoryImpl implements NoteRepository {
         subject: subject,
         createdAt: DateTime.now(),
         color: colorHex,
+        studySetId: studySetId,
       );
 
       await _firestore.collection(_collection).doc(id).set(note.toJson());

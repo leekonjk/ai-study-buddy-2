@@ -11,6 +11,7 @@ import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/domain/entities/subject.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart'; // Added import
 
 /// Screen to create a new study set.
 class CreateStudySetScreen extends StatefulWidget {
@@ -280,7 +281,7 @@ class _CreateStudySetScreenState extends State<CreateStudySetScreen> {
 
   Widget _buildSubjectSelector() {
     if (_isLoadingSubjects) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: LoadingIndicator(size: 60));
     }
 
     if (_enrolledSubjects.isEmpty) {

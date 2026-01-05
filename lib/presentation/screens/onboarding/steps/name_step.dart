@@ -36,62 +36,82 @@ class _NameStepState extends State<NameStep> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          const SizedBox(height: 40),
-          // Mascot and message
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const MascotWidget(
-                expression: MascotExpression.speaking,
-                size: MascotSize.medium,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ChatBubble(text: "What's your name?", isUser: false),
-              ),
-            ],
-          ),
-          const Spacer(),
-          // Input
-          TextField(
-            controller: _nameController,
-            style: const TextStyle(color: StudyBuddyColors.textPrimary),
-            decoration: StudyBuddyDecorations.inputDecoration(
-              hintText: 'Enter your name',
-              prefixIcon: const Icon(
-                Icons.person_outline_rounded,
-                color: StudyBuddyColors.textSecondary,
-              ),
-            ),
-            onSubmitted: (_) => _handleNext(),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _nameController.text.trim().isNotEmpty
-                  ? _handleNext
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: StudyBuddyColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: StudyBuddyDecorations.borderRadiusFull,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 40),
+                    // Mascot and message
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const MascotWidget(
+                          expression: MascotExpression.speaking,
+                          size: MascotSize.medium,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ChatBubble(
+                            text: "What's your name?",
+                            isUser: false,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    // Input
+                    TextField(
+                      controller: _nameController,
+                      style: const TextStyle(
+                        color: StudyBuddyColors.textPrimary,
+                      ),
+                      decoration: StudyBuddyDecorations.inputDecoration(
+                        hintText: 'Enter your name',
+                        prefixIcon: const Icon(
+                          Icons.person_outline_rounded,
+                          color: StudyBuddyColors.textSecondary,
+                        ),
+                      ),
+                      onSubmitted: (_) => _handleNext(),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _nameController.text.trim().isNotEmpty
+                            ? _handleNext
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: StudyBuddyColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                StudyBuddyDecorations.borderRadiusFull,
+                          ),
+                        ),
+                        child: const Text(
+                          'Continue',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: const Text(
-                'Continue',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

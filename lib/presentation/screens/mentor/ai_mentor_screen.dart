@@ -2,9 +2,11 @@
 /// Chat-based AI assistant for study help with typing indicators.
 library;
 
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:studnet_ai_buddy/di/service_locator.dart';
+import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
+import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
 import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/ai/lottie_typing_indicator.dart';
@@ -22,6 +24,10 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [];
   bool _isTyping = false;
+
+  // AI Services
+  final AIMentorService _aiService = getIt<AIMentorService>();
+  final AcademicRepository _academicRepo = getIt<AcademicRepository>();
 
   final List<String> _suggestedPrompts = [
     '📚 Explain photosynthesis simply',
@@ -52,7 +58,7 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
     super.dispose();
   }
 
-  void _sendMessage(String text) {
+  Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
     setState(() {
@@ -69,14 +75,26 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
     _messageController.clear();
     _scrollToBottom();
 
-    // Simulate AI response after typing
-    Timer(const Duration(milliseconds: 1500), () {
+    // Call real AI service
+    try {
+      // Get academic profile for context
+      final profileResult = await _academicRepo.getAcademicProfile();
+      final profile = profileResult.fold(
+        onSuccess: (p) => p,
+        onFailure: (_) => null,
+      );
+
+      final response = await _aiService.answerQuery(
+        query: text,
+        profile: profile,
+      );
+
       if (mounted) {
         setState(() {
           _isTyping = false;
           _messages.add(
             _ChatMessage(
-              text: _getAIResponse(text),
+              text: response,
               isUser: false,
               timestamp: DateTime.now(),
             ),
@@ -84,27 +102,25 @@ class _AIMentorScreenState extends State<AIMentorScreen> {
         });
         _scrollToBottom();
       }
-    });
-  }
-
-  String _getAIResponse(String query) {
-    final lowerQuery = query.toLowerCase();
-
-    if (lowerQuery.contains('photosynthesis')) {
-      return "🌱 **Photosynthesis** is how plants make their own food!\n\n**Simple Explanation:**\n1. Plants absorb sunlight through their leaves\n2. They take in CO₂ from the air\n3. They absorb water through their roots\n4. These combine to create glucose (sugar) + oxygen\n\n**Formula:** 6CO₂ + 6H₂O + Light → C₆H₁₂O₆ + 6O₂\n\nWould you like me to create flashcards on this topic?";
-    } else if (lowerQuery.contains('equation') ||
-        lowerQuery.contains('solve')) {
-      return "🧮 I'd be happy to help you solve equations!\n\nPlease share the specific equation, and I'll:\n• Break it down step by step\n• Explain each operation\n• Show you the solution\n\nJust type or paste the equation!";
-    } else if (lowerQuery.contains('flashcard')) {
-      return "📝 Great idea! Flashcards are excellent for memorization.\n\nTo create flashcards, I need:\n1. **The topic** you're studying\n2. **Key terms** and definitions\n\nOr you can upload your notes and I'll generate them for you!\n\nWhat topic would you like to create flashcards for?";
-    } else if (lowerQuery.contains('quiz')) {
-      return "🎯 Let's test your knowledge!\n\nI can quiz you on any topic. Here's how:\n1. Tell me the subject (e.g., Biology, History)\n2. Choose difficulty (Easy/Medium/Hard)\n3. I'll ask questions one by one\n\nWhat subject would you like to be quizzed on?";
-    } else if (lowerQuery.contains('tip') || lowerQuery.contains('study')) {
-      return "💡 **Top Study Tips:**\n\n1. **Pomodoro Technique** - Study 25 min, break 5 min\n2. **Active Recall** - Test yourself instead of re-reading\n3. **Spaced Repetition** - Review at increasing intervals\n4. **Teach Others** - Explaining helps you understand\n5. **Sleep Well** - Memory consolidates during sleep\n\nWould you like me to help you set up a study schedule?";
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _messages.add(
+            _ChatMessage(
+              text:
+                  "I'm having trouble connecting right now. Please try again in a moment.",
+              isUser: false,
+              timestamp: DateTime.now(),
+            ),
+          );
+        });
+        _scrollToBottom();
+      }
     }
-
-    return "That's an interesting question! 🤔\n\nI'm here to help with:\n• Explaining concepts\n• Creating study materials\n• Quizzing and testing\n• Study planning\n\nCould you tell me more about what you'd like to learn?";
   }
+
+  // _getAIResponse removed - now using real AI service
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -11,7 +11,9 @@ library;
 
 import 'package:studnet_ai_buddy/domain/entities/quiz.dart';
 import 'package:studnet_ai_buddy/domain/repositories/quiz_repository.dart';
-import 'package:studnet_ai_buddy/domain/repositories/flashcard_repository.dart'; // Added
+import 'package:studnet_ai_buddy/domain/repositories/flashcard_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/focus_session_repository.dart'; // Added
+import 'package:studnet_ai_buddy/domain/entities/focus_session.dart'; // Added
 import 'package:studnet_ai_buddy/domain/services/knowledge_estimation_service.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 
@@ -122,16 +124,19 @@ class QuizState {
 /// Coordinates with repository and knowledge estimation service.
 class QuizViewModel extends BaseViewModel {
   final QuizRepository _quizRepository;
-  final FlashcardRepository _flashcardRepository; // Added
+  final FlashcardRepository _flashcardRepository;
+  final FocusSessionRepository _focusSessionRepository; // Added
   // ignore: unused_field - Reserved for future knowledge estimation integration
   final KnowledgeEstimationService _knowledgeEstimationService;
 
   QuizViewModel({
     required QuizRepository quizRepository,
-    required FlashcardRepository flashcardRepository, // Added
+    required FlashcardRepository flashcardRepository,
+    required FocusSessionRepository focusSessionRepository, // Added
     required KnowledgeEstimationService knowledgeEstimationService,
   }) : _quizRepository = quizRepository,
-       _flashcardRepository = flashcardRepository, // Added
+       _flashcardRepository = flashcardRepository,
+       _focusSessionRepository = focusSessionRepository, // Added
        _knowledgeEstimationService = knowledgeEstimationService;
 
   QuizState _state = const QuizState();
@@ -440,13 +445,18 @@ class QuizViewModel extends BaseViewModel {
 
     final quiz = _state.quiz!;
 
-    // Calculate score
+    // Calculate score and track per-question results
     int correctCount = 0;
+    final Map<String, bool> flashcardResults = {};
+
     for (final question in quiz.questions) {
       final selectedAnswer = _state.answers[question.id];
-      if (selectedAnswer == question.correctOptionIndex) {
+      final isCorrect = selectedAnswer == question.correctOptionIndex;
+      if (isCorrect) {
         correctCount++;
       }
+      // Track result for flashcard progress (question.id is the flashcard id for study set quizzes)
+      flashcardResults[question.id] = isCorrect;
     }
 
     final totalQuestions = quiz.questions.length;
@@ -481,9 +491,29 @@ class QuizViewModel extends BaseViewModel {
 
     await saveResult.fold(
       onSuccess: (_) async {
-        // After saving quiz attempt, knowledge estimation could be triggered here
-        // In production, this would be triggered by a Cloud Function
-        // For now, we'll let the backend handle it separately
+        // Update flashcard progress if this was a study set quiz
+        if (quiz.id.startsWith('studyset_') && flashcardResults.isNotEmpty) {
+          await _flashcardRepository.updateFlashcardsProgressBatch(
+            flashcardResults,
+          );
+        }
+
+        // Save as a Focus Session for stats
+        final startTime = quiz.startedAt ?? DateTime.now();
+        final duration = DateTime.now().difference(startTime).inMinutes;
+        final actualMinutes = duration > 0 ? duration : 1; // Minimum 1 minute
+
+        final session = FocusSession(
+          id: 'quiz_${DateTime.now().millisecondsSinceEpoch}',
+          subjectId: quiz.subjectId,
+          startTime: startTime,
+          endTime: DateTime.now(),
+          plannedMinutes: 0, // Not planned
+          actualMinutes: actualMinutes,
+          status: FocusSessionStatus.completed,
+        );
+
+        await _focusSessionRepository.saveSession(session);
 
         _state = _state.copyWith(
           isSubmitting: false,

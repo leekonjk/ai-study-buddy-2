@@ -4,6 +4,7 @@ library;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 
@@ -298,11 +299,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Sign up button
+                  // Sign up button - Navigate to Create Account screen
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: _isLoading ? null : _signUpWithEmail,
+                      onPressed: _isLoading
+                          ? null
+                          : () {
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.createAccount,
+                              );
+                            },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: StudyBuddyColors.textPrimary,
                         padding: const EdgeInsets.symmetric(vertical: 16),

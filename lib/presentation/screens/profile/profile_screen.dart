@@ -12,6 +12,7 @@ import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 import 'package:provider/provider.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/profile/profile_viewmodel.dart';
 import 'package:studnet_ai_buddy/domain/entities/achievement.dart';
 
@@ -54,11 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: Consumer<ProfileViewModel>(
               builder: (context, vm, child) {
                 if (vm.state.viewState == ViewState.loading) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: StudyBuddyColors.accent,
-                    ),
-                  );
+                  return const Center(child: LoadingIndicator());
                 }
 
                 // Fallback if basic info not loaded yet (shouldn't happen with loaded state, but for safety)

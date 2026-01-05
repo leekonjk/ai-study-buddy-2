@@ -70,8 +70,12 @@ abstract class AIMentorService {
   /// Generates flashcards from uploaded file.
   Future<List<Map<String, dynamic>>> generateFlashcardsFromFile({
     required String fileId,
+    required String fileName,
+    required String context,
     required String difficulty,
     required int count,
+    required String? storagePath, // Added
+    String? fileContent,
   });
 
   /// Creates a new study set.

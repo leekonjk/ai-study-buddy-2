@@ -41,6 +41,12 @@ Future<void> main() async {
     ),
   );
 
+  // Lock orientation to portrait mode only
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   // Debug logging for navigation decision
   debugPrint('═══════════════════════════════════════════════════');
   debugPrint('APP LAUNCH - Navigation Decision');

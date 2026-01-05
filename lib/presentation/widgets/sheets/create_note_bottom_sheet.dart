@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/domain/entities/subject.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart';
 
 /// Bottom sheet for creating a new note
 class CreateNoteBottomSheet extends StatefulWidget {
@@ -258,10 +259,7 @@ class _CreateNoteBottomSheetState extends State<CreateNoteBottomSheet> {
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
+                              child: LoadingIndicator(size: 24),
                             )
                           : const Text(
                               'Save Note',

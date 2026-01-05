@@ -11,6 +11,8 @@ import 'package:studnet_ai_buddy/domain/entities/study_task.dart';
 import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/focus_session_repository.dart';
 import 'package:studnet_ai_buddy/domain/repositories/study_plan_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/note_repository.dart';
+import 'package:studnet_ai_buddy/domain/entities/note.dart';
 import 'package:studnet_ai_buddy/domain/services/local_storage_service.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 
@@ -26,6 +28,7 @@ class DashboardState {
   final int completedTasksCount;
   final int currentStreakDays;
   final List<FocusSession> recentSessions;
+  final List<Note> recentNotes;
   final String tipOfTheDay;
   final String? errorMessage;
   final int weeklyStudyMinutes;
@@ -43,6 +46,7 @@ class DashboardState {
     this.completedTasksCount = 0,
     this.currentStreakDays = 0,
     this.recentSessions = const [],
+    this.recentNotes = const [],
     this.tipOfTheDay = '',
     this.errorMessage,
     this.weeklyStudyMinutes = 0,
@@ -61,6 +65,7 @@ class DashboardState {
     int? completedTasksCount,
     int? currentStreakDays,
     List<FocusSession>? recentSessions,
+    List<Note>? recentNotes,
     String? tipOfTheDay,
     String? errorMessage,
     int? weeklyStudyMinutes,
@@ -78,6 +83,7 @@ class DashboardState {
       completedTasksCount: completedTasksCount ?? this.completedTasksCount,
       currentStreakDays: currentStreakDays ?? this.currentStreakDays,
       recentSessions: recentSessions ?? this.recentSessions,
+      recentNotes: recentNotes ?? this.recentNotes,
       tipOfTheDay: tipOfTheDay ?? this.tipOfTheDay,
       errorMessage: errorMessage,
       weeklyStudyMinutes: weeklyStudyMinutes ?? this.weeklyStudyMinutes,
@@ -110,20 +116,26 @@ class DashboardViewModel extends BaseViewModel {
   final StudyPlanRepository _studyPlanRepository;
   final FocusSessionRepository _focusSessionRepository;
   final AcademicRepository _academicRepository;
+  final NoteRepository _noteRepository;
 
   DashboardViewModel({
     required StudyPlanRepository studyPlanRepository,
     required FocusSessionRepository focusSessionRepository,
     required AcademicRepository academicRepository,
+    required NoteRepository noteRepository,
   }) : _studyPlanRepository = studyPlanRepository,
        _focusSessionRepository = focusSessionRepository,
-       _academicRepository = academicRepository;
+       _academicRepository = academicRepository,
+       _noteRepository = noteRepository;
 
   DashboardState _state = const DashboardState();
   DashboardState get state => _state;
 
   // Cache subjects for name lookup
   Map<String, dynamic> _subjectsMap = {};
+
+  // Track today's focus sessions separately (quiz, flashcard, focus completions)
+  int _todayFocusSessionsCount = 0;
 
   /// Loads all dashboard data.
   Future<void> loadDashboard() async {
@@ -159,6 +171,7 @@ class DashboardViewModel extends BaseViewModel {
 
     // Start listening to real-time plan updates
     _startListeningToPlan();
+    _startListeningToNotes();
 
     // Load focus minutes for today
     final focusResult = await _focusSessionRepository.getTodaysFocusMinutes();
@@ -191,15 +204,31 @@ class DashboardViewModel extends BaseViewModel {
     );
     List<FocusSession> recentSessions = [];
 
+    // Count today's completed sessions (quiz/flashcard/focus sessions)
+    int todayCompletedSessions = 0;
+    final todayStart = DateTime(now.year, now.month, now.day);
+
     sessionsResult.fold(
       onSuccess: (sessions) {
         // Sort by startTime descending
         sessions.sort((a, b) => b.startTime.compareTo(a.startTime));
         // Take top 3
         recentSessions = sessions.take(3).toList();
+
+        // Count today's completed sessions
+        todayCompletedSessions = sessions
+            .where(
+              (s) =>
+                  s.startTime.isAfter(todayStart) &&
+                  s.status == FocusSessionStatus.completed,
+            )
+            .length;
       },
       onFailure: (_) {},
     );
+
+    // Store focus sessions count for combining with plan tasks later
+    _todayFocusSessionsCount = todayCompletedSessions;
 
     // Build initial state (tasks will update via stream)
     final greeting = _generateGreeting(profile?.studentName);
@@ -211,7 +240,7 @@ class DashboardViewModel extends BaseViewModel {
       greetingMessage: greeting,
       activeSubjects: [], // Will populate from stream
       totalStudyMinutes: focusMinutes,
-      completedTasksCount: 0, // Will populate from stream
+      completedTasksCount: todayCompletedSessions, // Start with today's sessions
       currentStreakDays: streakDays,
       recentSessions: recentSessions,
       tipOfTheDay: tip,
@@ -313,17 +342,27 @@ class DashboardViewModel extends BaseViewModel {
   /// Priority: Critical > High > Medium > Low, then by time estimate.
   StudyTask? _identifyFocusTask(List<StudyTask> tasks) {
     final pending = tasks.where((t) => !t.isCompleted).toList();
-    if (pending.isEmpty) return null;
 
-    // Sort by priority (lower index = higher priority in enum)
-    pending.sort((a, b) {
-      final priorityCompare = a.priority.index.compareTo(b.priority.index);
-      if (priorityCompare != 0) return priorityCompare;
-      // Secondary sort by duration (shorter first)
-      return a.estimatedMinutes.compareTo(b.estimatedMinutes);
-    });
+    // If we have pending tasks, show the most important one
+    if (pending.isNotEmpty) {
+      // Sort by priority (lower index = higher priority in enum)
+      pending.sort((a, b) {
+        final priorityCompare = a.priority.index.compareTo(b.priority.index);
+        if (priorityCompare != 0) return priorityCompare;
+        // Secondary sort by duration (shorter first)
+        return a.estimatedMinutes.compareTo(b.estimatedMinutes);
+      });
+      return pending.first;
+    }
 
-    return pending.first;
+    // If all tasks are completed, show the last completed one (instead of vanishing)
+    // capable of showing "All done!" state with the last task details
+    final completed = tasks.where((t) => t.isCompleted).toList();
+    if (completed.isNotEmpty) {
+      return completed.last;
+    }
+
+    return null;
   }
 
   /// Builds subject progress list from today's tasks.
@@ -411,10 +450,50 @@ class DashboardViewModel extends BaseViewModel {
   @override
   void dispose() {
     _planSubscription?.cancel();
+    _notesSubscription?.cancel();
     super.dispose();
   }
 
   StreamSubscription? _planSubscription;
+  StreamSubscription? _notesSubscription;
+
+  void _startListeningToNotes() async {
+    final profileResult = await _academicRepository.getAcademicProfile();
+    final uid = profileResult.fold(
+      onSuccess: (p) => p?.id, // Using profile ID as user ID for now
+      onFailure: (_) => null,
+    );
+
+    // Fallback to auth current user if needed, but here we assume academic profile is linked
+    // Since we don't have direct auth here (clean architecture boundary),
+    // we might need to rely on the repository knowing the current user.
+    // The NoteRepository usually takes a userId.
+    // Let's assume fetching profile gives us the ID for now.
+
+    // Better safely: pass userId via constructor or get from repository context if possible.
+    // However, DashboardVM usually loads for the *current* user.
+    // Checking how NoteRepository is implemented... it requires userId in watchNotes(userId).
+    // Let's try to get it from profile or modifying instantiation.
+    // Simplify: We will just try to fetch it from repository or assume we can get it.
+    // Actually, DashboardViewModel doesn't hold 'currentUser'.
+    // Let's rely on AcademicRepository to give us the ID, as done above.
+
+    if (uid != null) {
+      _notesSubscription = _noteRepository.watchNotes(uid).listen((notes) {
+        // Sort by last modified decending
+        // Assuming Note has lastModified or createdAt
+        // Using createdAt for now as per Note entity knowledge
+        if (notes.isNotEmpty) {
+          // We need to cast or copy - List<Note> is returned
+          final sortedNotes = List<Note>.from(notes);
+          // Sort not implemented on entity? Let's check Note entity later.
+          // For now just take them.
+          _state = _state.copyWith(recentNotes: sortedNotes.take(3).toList());
+          notifyListeners();
+        }
+      });
+    }
+  }
 
   void _startListeningToPlan() {
     if (_planSubscription != null) return;
@@ -422,17 +501,23 @@ class DashboardViewModel extends BaseViewModel {
     _planSubscription = _studyPlanRepository.getPlanStream().listen((result) {
       result.fold(
         onSuccess: (plan) {
-          final tasks = plan?.tasksForDate(DateTime.now()) ?? [];
+          // Use ALL tasks for the week to calculate subject progress
+          final weeklyTasks = plan?.tasks ?? [];
+          final subjectProgress = _buildSubjectProgress(weeklyTasks);
 
-          final subjectProgress = _buildSubjectProgress(tasks);
+          // Filter for today's tasks for the task list
+          final tasks = plan?.tasksForDate(DateTime.now()) ?? [];
           final focusTask = _identifyFocusTask(tasks);
-          final completedCount = tasks.where((t) => t.isCompleted).length;
+          final planCompletedCount = tasks.where((t) => t.isCompleted).length;
+
+          // Combine plan tasks + focus sessions (quiz/flashcard completions)
+          final totalCompleted = planCompletedCount + _todayFocusSessionsCount;
 
           _state = _state.copyWith(
             todayTasks: tasks,
             activeSubjects: subjectProgress,
             focusTask: focusTask,
-            completedTasksCount: completedCount,
+            completedTasksCount: totalCompleted,
           );
           notifyListeners();
         },

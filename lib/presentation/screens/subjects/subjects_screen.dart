@@ -3,6 +3,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/entities/subject.dart';
 import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
@@ -78,7 +79,7 @@ class _SubjectsScreenState extends State<SubjectsScreen> {
                   future: _subjectsFuture,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(child: LoadingIndicator());
                     }
 
                     final subjects = snapshot.data ?? [];

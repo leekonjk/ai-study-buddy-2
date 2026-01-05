@@ -8,6 +8,7 @@ class Note {
   final String subject;
   final DateTime createdAt;
   final String color; // Stored as hex string
+  final String? studySetId; // Optional link to a study set
 
   const Note({
     required this.id,
@@ -17,6 +18,7 @@ class Note {
     required this.subject,
     required this.createdAt,
     required this.color,
+    this.studySetId,
   });
 
   Map<String, dynamic> toJson() {
@@ -28,6 +30,7 @@ class Note {
       'subject': subject,
       'createdAt': createdAt.toIso8601String(),
       'color': color,
+      'studySetId': studySetId,
     };
   }
 
@@ -40,6 +43,7 @@ class Note {
       subject: json['subject'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
       color: json['color'] as String,
+      studySetId: json['studySetId'] as String?,
     );
   }
 
@@ -51,6 +55,7 @@ class Note {
     String? subject,
     DateTime? createdAt,
     String? color,
+    String? studySetId,
   }) {
     return Note(
       id: id ?? this.id,
@@ -60,6 +65,7 @@ class Note {
       subject: subject ?? this.subject,
       createdAt: createdAt ?? this.createdAt,
       color: color ?? this.color,
+      studySetId: studySetId ?? this.studySetId,
     );
   }
 }

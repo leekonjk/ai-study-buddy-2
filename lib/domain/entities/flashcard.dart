@@ -17,6 +17,9 @@ class Flashcard {
   final DateTime createdAt;
   final DateTime lastUpdated;
 
+  /// A card is considered mastered after 3+ successful repetitions
+  bool get isMastered => repetitions >= 3;
+
   const Flashcard({
     required this.id,
     required this.studySetId,

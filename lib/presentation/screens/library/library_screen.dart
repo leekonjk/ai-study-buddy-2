@@ -4,28 +4,22 @@ library;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
-import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
-import 'package:studnet_ai_buddy/core/utils/result.dart';
-import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
 
-// import 'package:studnet_ai_buddy/domain/repositories/resource_repository.dart'; // Removed
-// import 'package:studnet_ai_buddy/domain/services/file_upload_service.dart'; // Removed
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:studnet_ai_buddy/domain/repositories/note_repository.dart';
-import 'package:studnet_ai_buddy/domain/entities/note.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/library/library_viewmodel.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // For Timestamp usage
+import 'package:studnet_ai_buddy/core/utils/result.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/cards/modern_file_card.dart';
-import 'package:studnet_ai_buddy/presentation/widgets/common/empty_files_state.dart';
-
 import 'package:studnet_ai_buddy/domain/entities/study_set.dart';
-
-import 'package:studnet_ai_buddy/presentation/widgets/badges/subject_badge.dart';
+import 'package:studnet_ai_buddy/domain/entities/note.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/cards/modern_note_card.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart'; // Added import
+import 'package:url_launcher/url_launcher.dart';
 
 /// Library screen with tabs for Study Sets, Notes, and Files.
 class LibraryScreen extends StatefulWidget {
@@ -39,19 +33,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late TabController _tabController;
   late LibraryViewModel _libraryViewModel;
-  String _searchQuery = '';
-  String _selectedCategory = 'All';
   bool _isSearching = false;
-
-  final List<String> _categories = [
-    'All',
-    'Science',
-    'Math',
-    'History',
-    'Languages',
-    'Coding',
-    'Other',
-  ];
 
   @override
   bool get wantKeepAlive => true;
@@ -91,6 +73,7 @@ class _LibraryScreenState extends State<LibraryScreen>
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
+                  // ... existing header content
                   Row(
                     children: [
                       const Expanded(
@@ -108,7 +91,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                           setState(() {
                             _isSearching = !_isSearching;
                             if (!_isSearching) {
-                              _searchQuery = '';
+                              _libraryViewModel.updateSearchQuery('');
                             }
                           });
                         },
@@ -129,7 +112,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                         color: StudyBuddyColors.textPrimary,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Search study sets...',
+                        hintText: 'Search study sets, files...',
                         hintStyle: const TextStyle(
                           color: StudyBuddyColors.textSecondary,
                         ),
@@ -148,15 +131,76 @@ class _LibraryScreenState extends State<LibraryScreen>
                         ),
                       ),
                       onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value;
-                        });
+                        _libraryViewModel.updateSearchQuery(value);
                       },
+                    ),
+                    const SizedBox(height: 12),
+                    // Filter Chips
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildFilterChip('All'),
+                          const SizedBox(width: 8),
+                          _buildFilterChip('PDFs'),
+                          const SizedBox(width: 8),
+                          _buildFilterChip('Images'),
+                          const SizedBox(width: 8),
+                          _buildFilterChip('Docs'),
+                        ],
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
+
+            // Upload Progress
+            Consumer<LibraryViewModel>(
+              builder: (context, vm, child) {
+                if (vm.uploadProgress == null) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Uploading...',
+                            style: TextStyle(
+                              color: StudyBuddyColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            '${(vm.uploadProgress! * 100).toInt()}%',
+                            style: const TextStyle(
+                              color: StudyBuddyColors.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      LinearProgressIndicator(
+                        value: vm.uploadProgress,
+                        backgroundColor: StudyBuddyColors.cardBackground,
+                        color: StudyBuddyColors.primary,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            // Tab bar
 
             // Tab bar
             Container(
@@ -181,8 +225,8 @@ class _LibraryScreenState extends State<LibraryScreen>
                 ),
                 dividerColor: Colors.transparent,
                 padding: const EdgeInsets.all(4),
-                tabs: [
-                  const Tab(
+                tabs: const [
+                  Tab(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -192,7 +236,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                       ],
                     ),
                   ),
-                  const Tab(
+                  Tab(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -202,7 +246,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                       ],
                     ),
                   ),
-                  const Tab(
+                  Tab(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -241,283 +285,156 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
+  Widget _buildFilterChip(String label) {
+    final isSelected = _libraryViewModel.activeFilter == label;
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        _libraryViewModel.updateFilter(label);
+      },
+      backgroundColor: StudyBuddyColors.cardBackground,
+      selectedColor: StudyBuddyColors.primary.withValues(alpha: 0.2),
+      labelStyle: TextStyle(
+        color: isSelected
+            ? StudyBuddyColors.primary
+            : StudyBuddyColors.textSecondary,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isSelected
+              ? StudyBuddyColors.primary
+              : StudyBuddyColors.border,
+        ),
+      ),
+      showCheckmark: false,
+    );
+  }
+
   Widget _buildStudySetsTab() {
     return StreamBuilder<Result<List<StudySet>>>(
       stream: _libraryViewModel.watchStudySets(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: LoadingIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading study sets: ${snapshot.error}'),
+          );
         }
 
         final result = snapshot.data;
-        if (result == null || result.isFailure) {
-          final errorMessage =
-              (result as Err?)?.failure.message ?? 'Unknown error';
-          return _buildEmptyState(
-            icon: Icons.error_outline_rounded,
-            title: 'Error loading sets',
-            subtitle: errorMessage,
-          );
-        }
+        if (result == null) return const SizedBox();
 
-        final allSets = (result as Success<List<StudySet>>).value;
-        if (allSets.isEmpty) {
-          return _buildEmptyState(
-            icon: Icons.layers_rounded,
-            title: 'No study sets yet',
-            subtitle: 'Create your first study set to get started',
-          );
-        }
+        return result.fold(
+          onSuccess: (sets) {
+            final filteredSets = _libraryViewModel.filterStudySets(sets);
 
-        // Apply filters locally on the streamed data
-        final filteredSets = allSets.where((set) {
-          final matchesSearch = set.title.toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          );
-          final matchesCategory =
-              _selectedCategory == 'All' ||
-              set.category.toLowerCase() == _selectedCategory.toLowerCase();
-          return matchesSearch && matchesCategory;
-        }).toList();
+            if (filteredSets.isEmpty) {
+              if (_libraryViewModel.searchQuery.isNotEmpty) {
+                return _buildEmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'No matches found',
+                  subtitle: 'Try adjusting your search query',
+                );
+              }
+              return _buildEmptyState(
+                icon: Icons.layers_outlined,
+                title: 'No Study Sets Yet',
+                subtitle: 'Create your first study set to get started!',
+              );
+            }
 
-        return Column(
-          children: [
-            // Category Filters
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: _categories.map((category) {
-                  final isSelected = _selectedCategory == category;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: Text(category),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        setState(() {
-                          _selectedCategory = category;
-                        });
+            return ListView.separated(
+              padding: const EdgeInsets.all(24),
+              itemCount: filteredSets.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 16),
+              itemBuilder: (context, index) {
+                final set = filteredSets[index];
+                return _StudySetCard(
+                  studySet: set,
+                  onTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.studySetDetail,
+                      arguments: {
+                        'studySetId': set.id,
+                        'title': set.title,
+                        'category': set.category,
                       },
-                      backgroundColor: StudyBuddyColors.cardBackground,
-                      selectedColor: StudyBuddyColors.primary.withValues(
-                        alpha: 0.2,
-                      ),
-                      labelStyle: TextStyle(
-                        color: isSelected
-                            ? StudyBuddyColors.primary
-                            : StudyBuddyColors.textSecondary,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(
-                          color: isSelected
-                              ? StudyBuddyColors.primary
-                              : StudyBuddyColors.border,
-                        ),
-                      ),
-                      showCheckmark: false,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // List
-            Expanded(
-              child: filteredSets.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No sets found matching your filters.',
-                        style: TextStyle(color: StudyBuddyColors.textSecondary),
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
-                      itemCount: filteredSets.length,
-                      itemBuilder: (context, index) {
-                        final set = filteredSets[index];
-                        return _StudySetCard(
-                          studySet: set,
-                          onTap: () {
-                            Navigator.pushNamed(
-                              context,
-                              AppRoutes.studySetDetail,
-                              arguments: {
-                                'studySetId': set.id,
-                                'title': set.title,
-                                'category': set.category,
-                              },
-                            );
-                          },
-                        ).animate().fadeIn(
-                          delay: Duration(milliseconds: 50 * index),
-                        );
-                      },
-                    ),
-            ),
-          ],
+                    );
+                  },
+                );
+              },
+            );
+          },
+          onFailure: (failure) =>
+              Center(child: Text('Error: ${failure.message}')),
         );
       },
     );
   }
 
   Widget _buildNotesTab() {
-    return FutureBuilder(
-      future: getIt<NoteRepository>().getNoteCount(
-        FirebaseAuth.instance.currentUser?.uid ?? '',
-      ),
+    return StreamBuilder<List<Note>>(
+      stream: _libraryViewModel.watchNotes(),
       builder: (context, snapshot) {
-        // We can use a StreamBuilder here if we want real-time updates,
-        // but for the library summary, we might just want to show recent notes.
-        // Let's use the stream from NoteRepository
-        return StreamBuilder<List<Note>>(
-          stream: getIt<NoteRepository>().watchNotes(
-            FirebaseAuth.instance.currentUser?.uid ?? '',
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: LoadingIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        final notes = snapshot.data ?? [];
+
+        // Filter notes based on search
+        final query = _libraryViewModel.searchQuery.toLowerCase();
+        final filteredNotes = notes.where((note) {
+          return query.isEmpty ||
+              note.title.toLowerCase().contains(query) ||
+              note.content.toLowerCase().contains(query) ||
+              note.subject.toLowerCase().contains(query);
+        }).toList();
+
+        if (filteredNotes.isEmpty) {
+          if (query.isNotEmpty) {
+            return _buildEmptyState(
+              icon: Icons.search_off_rounded,
+              title: 'No notes found',
+              subtitle: 'Try adjusting your search query',
+            );
+          }
+          return _buildEmptyState(
+            icon: Icons.note_alt_outlined,
+            title: 'No Notes Yet',
+            subtitle: 'Create your first note to capture ideas!',
+          );
+        }
+
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.8,
           ),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            final notes = snapshot.data ?? [];
-
-            if (notes.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: StudyBuddyColors.secondary.withValues(
-                          alpha: 0.15,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.note_alt_rounded,
-                        size: 40,
-                        color: StudyBuddyColors.secondary,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Your Notes',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: StudyBuddyColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'No notes yet. Start taking notes anytime!',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: StudyBuddyColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    OutlinedButton.icon(
-                      onPressed: () => _showCreateNoteBottomSheet(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: StudyBuddyColors.secondary,
-                        side: const BorderSide(
-                          color: StudyBuddyColors.secondary,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                      ),
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Create Note'),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
-              itemCount: notes.length,
-              itemBuilder: (context, index) {
-                final note = notes[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Material(
-                    color: StudyBuddyColors.cardBackground,
-                    borderRadius: BorderRadius.circular(16),
-                    child: InkWell(
-                      onTap: () {
-                        // Navigate to note details/edit
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.noteEditor,
-                          arguments: note,
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: StudyBuddyColors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    note.title.isNotEmpty
-                                        ? note.title
-                                        : 'Untitled Note',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: StudyBuddyColors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                                if (note.subject.isNotEmpty &&
-                                    note.subject != 'General')
-                                  SubjectBadge(
-                                    subjectName: note.subject,
-                                    compact: true,
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              note.content,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: StudyBuddyColors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Created: ${_formatDate(note.createdAt)}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: StudyBuddyColors.textTertiary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+          itemCount: filteredNotes.length,
+          itemBuilder: (context, index) {
+            final note = filteredNotes[index];
+            return ModernNoteCard(
+              note: note,
+              onTap: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.noteEditor,
+                  arguments: note,
                 );
               },
             );
@@ -527,29 +444,31 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Files Tab Implementation
-  // ─────────────────────────────────────────────────────────────────────────
-
   Widget _buildFilesTab() {
     return Consumer<LibraryViewModel>(
       builder: (context, viewModel, child) {
         if (viewModel.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: LoadingIndicator(message: 'Loading files...'),
+          );
         }
 
-        if (viewModel.errorMessage != null) {
-          return Center(child: Text('Error: ${viewModel.errorMessage}'));
-        }
-
-        final files = viewModel.files;
+        final files = viewModel.filteredFiles;
 
         if (files.isEmpty) {
-          return EmptyFilesState(onUploadPressed: _showUploadSheet);
+          if (viewModel.searchQuery.isNotEmpty ||
+              viewModel.activeFilter != 'All') {
+            return _buildEmptyState(
+              icon: Icons.search_off_rounded,
+              title: 'No files found',
+              subtitle: 'Try adjusting your search or filters',
+            );
+          }
+          return _buildEmptyState(
+            icon: Icons.folder_open_rounded,
+            title: 'No Files Yet',
+            subtitle: 'Upload PDFs, images, or docs to your library',
+          );
         }
 
         return GridView.builder(
@@ -563,8 +482,10 @@ class _LibraryScreenState extends State<LibraryScreen>
           itemCount: files.length,
           itemBuilder: (context, index) {
             final file = files[index];
-            final fileName = file['name'] ?? 'Unnamed File';
-            final fileType = file['type'] ?? 'unknown';
+            // Fix: accessing 'name' instead of 'originalName' as per viewmodel fix
+            final fileName =
+                file['name'] ?? file['originalName'] ?? 'Unnamed File';
+            final fileType = (file['fileType'] ?? 'unknown').toString();
             final fileSizeBytes = file['size'] ?? 0;
             final uploadedAt =
                 (file['uploadedAt'] as Timestamp?)?.toDate() ?? DateTime.now();
@@ -576,31 +497,7 @@ class _LibraryScreenState extends State<LibraryScreen>
               fileSizeBytes: fileSizeBytes,
               uploadedAt: uploadedAt,
               thumbnailUrl: thumbnailUrl,
-              onTap: () {
-                // TODO: Implement file preview
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Opening $fileName'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-              onGenerateFlashcards: () {
-                Navigator.pushNamed(
-                  context,
-                  AppRoutes.addFlashcards,
-                  arguments: {
-                    'studySetTitle': 'From $fileName',
-                    'studySetCategory': 'General',
-                    'studySetDescription':
-                        'Automatically generated from $fileName',
-                    'isPrivate': true,
-                    'autoStartAI': true,
-                    // We can pass fileId if we want the service to fetch content
-                    'fileId': file['id'],
-                  },
-                );
-              },
+              onTap: null, // File opening disabled
               onDelete: () async {
                 final confirmed = await showDialog<bool>(
                   context: context,
@@ -625,6 +522,21 @@ class _LibraryScreenState extends State<LibraryScreen>
 
                 if (confirmed == true && context.mounted) {
                   viewModel.deleteFile(file['id'], file['storagePath']);
+                }
+              },
+              onGenerateFlashcards: () {
+                if (file['id'] != null) {
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.addFlashcards,
+                    arguments: {
+                      'studySetTitle': 'From $fileName',
+                      'studySetCategory': 'General',
+                      'fileId': file['id'],
+                      'storagePath': file['storagePath'],
+                      'autoStartAI': true,
+                    },
+                  );
                 }
               },
             );
@@ -922,11 +834,6 @@ class _LibraryScreenState extends State<LibraryScreen>
         );
       },
     );
-  }
-
-  /// Navigates to the note editor for creating a new note
-  void _showCreateNoteBottomSheet(BuildContext context) {
-    Navigator.pushNamed(context, AppRoutes.noteEditor);
   }
 }
 

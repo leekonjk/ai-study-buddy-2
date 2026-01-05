@@ -10,6 +10,7 @@ import 'package:studnet_ai_buddy/domain/repositories/flashcard_repository.dart';
 import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/common/progress_ring.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart'; // Added import
 
 /// Flashcard study session screen with swipe gestures.
 class FlashcardScreen extends StatefulWidget {
@@ -44,6 +45,9 @@ class _FlashcardScreenState extends State<FlashcardScreen>
   // Stats
   int _knownCount = 0;
   int _unknownCount = 0;
+
+  // Track results for each flashcard: flashcardId -> known(true)/unknown(false)
+  final Map<String, bool> _flashcardResults = {};
 
   @override
   void initState() {
@@ -213,6 +217,10 @@ class _FlashcardScreenState extends State<FlashcardScreen>
   }
 
   void _handleSwipeComplete(bool known) {
+    // Track this flashcard's result
+    final currentCard = _flashcards[_currentIndex];
+    _flashcardResults[currentCard.id] = known;
+
     setState(() {
       if (known) {
         _knownCount++;
@@ -242,6 +250,9 @@ class _FlashcardScreenState extends State<FlashcardScreen>
   }
 
   void _showResults() {
+    // Save progress to Firestore
+    _saveProgress();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -262,10 +273,23 @@ class _FlashcardScreenState extends State<FlashcardScreen>
             _unknownCount = 0;
             _isFlipped = false;
             _dragOffset = Offset.zero;
+            _flashcardResults.clear();
           });
         },
       ),
     );
+  }
+
+  Future<void> _saveProgress() async {
+    if (_flashcardResults.isEmpty) return;
+
+    try {
+      final repository = getIt<FlashcardRepository>();
+      await repository.updateFlashcardsProgressBatch(_flashcardResults);
+    } catch (e) {
+      // Silently fail - progress tracking is not critical
+      debugPrint('Failed to save flashcard progress: $e');
+    }
   }
 
   @override
@@ -277,9 +301,7 @@ class _FlashcardScreenState extends State<FlashcardScreen>
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const GradientScaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const GradientScaffold(body: Center(child: LoadingIndicator()));
     }
 
     final progress = (_currentIndex + 1) / _flashcards.length;

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart'; // Added import
 import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/planner/ai_planner_viewmodel.dart';
 import 'package:studnet_ai_buddy/domain/entities/study_task.dart';
@@ -147,9 +148,7 @@ class _PlannerContentState extends State<_PlannerContent> {
               ),
 
               if (state.viewState == ViewState.loading)
-                const Expanded(
-                  child: Center(child: CircularProgressIndicator()),
-                )
+                const Expanded(child: Center(child: LoadingIndicator()))
               else if (state.viewState == ViewState.error)
                 Expanded(
                   child: Center(
@@ -541,7 +540,12 @@ class _PlannerContentState extends State<_PlannerContent> {
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
-                          value: selectedSubjectId,
+                          value:
+                              viewModel.state.subjects.any(
+                                (s) => s.id == selectedSubjectId,
+                              )
+                              ? selectedSubjectId
+                              : null,
                           isExpanded: true,
                           dropdownColor: StudyBuddyColors.cardBackground,
                           hint: const Text('Subject'),
@@ -813,9 +817,18 @@ class _PlannerContentState extends State<_PlannerContent> {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
-                    value: selectedSubjectId,
+                    value:
+                        viewModel.state.subjects.any(
+                          (s) => s.id == selectedSubjectId,
+                        )
+                        ? selectedSubjectId
+                        : null,
                     isExpanded: true,
                     dropdownColor: StudyBuddyColors.cardBackground,
+                    hint: const Text(
+                      'Select Subject',
+                      style: TextStyle(color: StudyBuddyColors.textSecondary),
+                    ),
                     items: viewModel.state.subjects.map((s) {
                       return DropdownMenuItem(
                         value: s.id,

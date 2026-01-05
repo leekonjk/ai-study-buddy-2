@@ -153,4 +153,110 @@ class FlashcardRepositoryImpl implements FlashcardRepository {
       return Err(NetworkFailure(message: e.toString()));
     }
   }
+
+  @override
+  Future<Result<void>> updateFlashcardProgress(
+    String flashcardId,
+    bool known,
+  ) async {
+    try {
+      final docRef = _firestore.collection(_collection).doc(flashcardId);
+      final doc = await docRef.get();
+
+      if (!doc.exists) {
+        return const Err(NetworkFailure(message: 'Flashcard not found'));
+      }
+
+      final data = doc.data()!;
+      final currentReps = data['repetitions'] as int? ?? 0;
+      final currentEaseFactor = (data['easeFactor'] as num?)?.toDouble() ?? 2.5;
+
+      // SM-2 algorithm simplified:
+      // If known: increase repetitions and adjust ease factor
+      // If unknown: reset repetitions to 0
+      int newReps;
+      double newEaseFactor;
+      int newInterval;
+
+      if (known) {
+        newReps = currentReps + 1;
+        // Slightly increase ease factor for correct answers
+        newEaseFactor = (currentEaseFactor + 0.1).clamp(1.3, 2.5);
+        // Calculate interval: 1, 6, then easeFactor * previous
+        if (newReps == 1) {
+          newInterval = 1;
+        } else if (newReps == 2) {
+          newInterval = 6;
+        } else {
+          final prevInterval = data['interval'] as int? ?? 1;
+          newInterval = (prevInterval * newEaseFactor).round();
+        }
+      } else {
+        newReps = 0;
+        // Decrease ease factor for wrong answers
+        newEaseFactor = (currentEaseFactor - 0.2).clamp(1.3, 2.5);
+        newInterval = 1;
+      }
+
+      final nextReview = DateTime.now().add(Duration(days: newInterval));
+
+      await docRef.update({
+        'repetitions': newReps,
+        'easeFactor': newEaseFactor,
+        'interval': newInterval,
+        'nextReviewDate': nextReview.toIso8601String(),
+        'lastUpdated': DateTime.now().toIso8601String(),
+      });
+
+      return const Success(null);
+    } on FirebaseException catch (e) {
+      return Err(
+        NetworkFailure(message: e.message ?? 'Firestore error', code: e.code),
+      );
+    } catch (e) {
+      return Err(NetworkFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Result<void>> updateFlashcardsProgressBatch(
+    Map<String, bool> flashcardResults,
+  ) async {
+    try {
+      final batch = _firestore.batch();
+      final now = DateTime.now();
+
+      for (final entry in flashcardResults.entries) {
+        final flashcardId = entry.key;
+        final known = entry.value;
+        final docRef = _firestore.collection(_collection).doc(flashcardId);
+
+        // For batch updates, we'll do a simpler update
+        // In production, you'd want to read current values first
+        if (known) {
+          batch.update(docRef, {
+            'repetitions': FieldValue.increment(1),
+            'lastUpdated': now.toIso8601String(),
+          });
+        } else {
+          batch.update(docRef, {
+            'repetitions': 0,
+            'lastUpdated': now.toIso8601String(),
+          });
+        }
+      }
+
+      await batch.commit();
+      return const Success(null);
+    } on FirebaseException catch (e) {
+      return Err(
+        NetworkFailure(
+          message: e.message ?? 'Batch progress update error',
+          code: e.code,
+        ),
+      );
+    } catch (e) {
+      return Err(NetworkFailure(message: e.toString()));
+    }
+  }
 }

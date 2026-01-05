@@ -402,23 +402,26 @@ class AIPlannerViewModel extends BaseViewModel {
   Future<void> toggleTaskCompletion(String taskId) async {
     if (_state.currentPlan == null) return;
 
-    // Find the task and toggle its completion
-    final updatedTasks = _state.currentPlan!.tasks.map((task) {
-      if (task.id == taskId) {
-        return task.copyWith(isCompleted: !task.isCompleted);
-      }
-      return task;
-    }).toList();
+    // Find the task
+    final taskIndex = _state.currentPlan!.tasks.indexWhere(
+      (t) => t.id == taskId,
+    );
+    if (taskIndex == -1) return;
 
-    // Update the plan with new tasks
-    final updatedPlan = _state.currentPlan!.copyWith(tasks: updatedTasks);
+    final task = _state.currentPlan!.tasks[taskIndex];
+    final updatedTask = task.copyWith(isCompleted: !task.isCompleted);
 
-    // Persist to Firestore
-    final result = await _studyPlanRepository.saveStudyPlan(updatedPlan);
+    // Persist single task update to Firestore
+    final result = await _studyPlanRepository.updateTask(updatedTask);
 
     result.fold(
       onSuccess: (_) {
-        // Update local state
+        // Update local state ONLY on success to keep UI in sync with backend
+        final updatedTasks = List<StudyTask>.from(_state.currentPlan!.tasks);
+        updatedTasks[taskIndex] = updatedTask;
+
+        final updatedPlan = _state.currentPlan!.copyWith(tasks: updatedTasks);
+
         _state = _state.copyWith(
           currentPlan: updatedPlan,
           tasks: updatedPlan.tasksForDate(_state.selectedDate),
@@ -429,12 +432,17 @@ class AIPlannerViewModel extends BaseViewModel {
         final completedCount = updatedPlan.tasks
             .where((t) => t.isCompleted)
             .length;
-        final achievementService = getIt<AchievementService>();
-        achievementService.checkFirstTaskCompletion(completedCount);
-        achievementService.checkTaskChampion(completedCount);
+
+        // Use try-catch or safe access for achievements to prevent crashes
+        try {
+          final achievementService = getIt<AchievementService>();
+          achievementService.checkFirstTaskCompletion(completedCount);
+          achievementService.checkTaskChampion(completedCount);
+        } catch (e) {
+          // Ignore achievement errors
+        }
       },
       onFailure: (f) {
-        // If save fails, revert UI (or show error)
         _state = _state.copyWith(
           errorMessage: "Failed to update task: ${f.message}",
         );

@@ -3,6 +3,7 @@
 library;
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
@@ -35,11 +36,9 @@ class _AuthGateState extends State<AuthGate> {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Show loading while checking auth state
+        // Show themed loading while checking auth state (seamless transition from splash)
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return _buildSeamlessLoading();
         }
 
         final user = snapshot.data;
@@ -55,12 +54,10 @@ class _AuthGateState extends State<AuthGate> {
           return FutureBuilder<bool>(
             future: _onboardingFuture,
             builder: (context, onboardingSnapshot) {
-              // Show loading while checking onboarding status
+              // Show themed loading while checking onboarding status (seamless)
               if (onboardingSnapshot.connectionState ==
                   ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
+                return _buildSeamlessLoading();
               }
 
               // Handle errors gracefully
@@ -87,6 +84,25 @@ class _AuthGateState extends State<AuthGate> {
         _currentUserId = null;
         return const LoginScreen();
       },
+    );
+  }
+
+  /// Seamless loading widget that matches splash screen for smooth transition
+  Widget _buildSeamlessLoading() {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF0A0E21), // Dark background matching splash
+              Color(0xFF1A1F38),
+            ],
+          ),
+        ),
+        child: const Center(child: LoadingIndicator()),
+      ),
     );
   }
 

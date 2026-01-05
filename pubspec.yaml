@@ -65,7 +65,7 @@ dependencies:
   url_launcher: ^6.3.1
   
   # AI Integration
-  firebase_ai: ^3.6.1
+  firebase_vertexai: ^1.1.0
   
   # Curved Navigation Bar
   curved_navigation_bar: ^1.0.6
@@ -78,6 +78,8 @@ dependencies:
   
   # Calendar
   table_calendar: ^3.1.2
+  read_pdf_text: ^0.3.1
+
 
 dev_dependencies:
   flutter_test:

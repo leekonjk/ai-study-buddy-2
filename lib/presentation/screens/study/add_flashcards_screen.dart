@@ -13,7 +13,10 @@ import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
 import 'package:studnet_ai_buddy/core/utils/result.dart'; // Added for Err type
 
 import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
-import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart'; // Added
+import 'package:studnet_ai_buddy/domain/repositories/file_repository.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart'; // Added import
 
 /// Data class for a flashcard being created.
 class FlashcardData {
@@ -42,6 +45,7 @@ class AddFlashcardsScreen extends StatefulWidget {
   final String studySetDescription;
   final String? subjectId; // Added subjectId
   final String? fileId; // Added fileId
+  final String? storagePath; // Added
   final bool isPrivate;
   final bool autoStartAI;
 
@@ -52,6 +56,7 @@ class AddFlashcardsScreen extends StatefulWidget {
     required this.studySetDescription,
     this.subjectId, // Added
     this.fileId, // Added
+    this.storagePath, // Added
     required this.isPrivate,
     this.autoStartAI = false,
   });
@@ -187,14 +192,42 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
         },
       );
 
+      String? fileContent;
+      if (widget.fileId != null) {
+        try {
+          // Fetch file content from repository
+          final fileRepo =
+              getIt<
+                FileRepository
+              >(); // We need to add this to imports or getIt
+          // Assuming we can get current user ID.
+          // Since we don't have Auth here easily, we might need to rely on the Repo handling it or pass it.
+          // FileRepository needs userId.
+          // Auth is usually in a Service.
+          // Let's import FirebaseAuth here or use a service.
+          // Better: FileRepository.getFile(userId, fileId)
+          // We need userId.
+          final user =
+              getIt<FirebaseAuth>().currentUser; // Need to import firebase_auth
+          if (user != null) {
+            final fileData = await fileRepo.getFile(user.uid, widget.fileId!);
+            fileContent = fileData?['content'];
+          }
+        } catch (_) {}
+      }
+
       final results = widget.fileId != null
           ? await _aiMentorService.generateFlashcardsFromFile(
               fileId: widget.fileId!,
+              fileName: widget.studySetTitle,
+              context: contextTopics,
               difficulty: 'medium',
               count: count,
+              storagePath: widget.storagePath,
+              fileContent: fileContent,
             )
           : await _aiMentorService.generateFlashcardsFromTopics(
-              topics: contextTopics, // Now includes real subject context!
+              topics: contextTopics,
               difficulty: 'medium',
               count: count,
             );
@@ -592,7 +625,7 @@ class _AddFlashcardsScreenState extends State<AddFlashcardsScreen> {
             const SizedBox(
               width: 24,
               height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: LoadingIndicator(size: 24),
             )
           else
             TextButton.icon(

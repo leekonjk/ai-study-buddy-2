@@ -52,27 +52,32 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
   Future<Result<StudyPlan?>> getPlanForWeek(DateTime weekStart) async {
     try {
       // Normalize to start of day
-      final normalizedStart = DateTime(
-        weekStart.year,
-        weekStart.month,
-        weekStart.day,
-      );
-      final weekStartTimestamp = Timestamp.fromDate(normalizedStart);
 
       // Query for active plan for this week
+      // Query for active plan (prioritize isActive over date execution)
       final querySnapshot = await _firestore
           .collection(_studyPlansCollection)
           .where('studentId', isEqualTo: _currentStudentId)
-          .where('weekStartDate', isEqualTo: weekStartTimestamp)
           .where('isActive', isEqualTo: true)
-          .limit(1)
           .get();
 
       if (querySnapshot.docs.isEmpty) {
         return const Success(null);
       }
 
-      final doc = querySnapshot.docs.first;
+      // Sort in memory to avoid Composite Index requirement
+      final docs = querySnapshot.docs.toList()
+        ..sort((a, b) {
+          final tA =
+              (a.data()['generatedAt'] as Timestamp?)?.toDate() ??
+              DateTime(1900);
+          final tB =
+              (b.data()['generatedAt'] as Timestamp?)?.toDate() ??
+              DateTime(1900);
+          return tB.compareTo(tA); // Descending
+        });
+
+      final doc = docs.first;
       final plan = _mapDocumentToStudyPlan(doc);
 
       return Success(plan);
@@ -115,28 +120,29 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
   @override
   Stream<Result<StudyPlan?>> getPlanStream() {
     try {
-      final now = DateTime.now();
-      final weekStart = _getWeekStart(now);
-      final normalizedStart = DateTime(
-        weekStart.year,
-        weekStart.month,
-        weekStart.day,
-      );
-      final weekStartTimestamp = Timestamp.fromDate(normalizedStart);
-
       return _firestore
           .collection(_studyPlansCollection)
           .where('studentId', isEqualTo: _currentStudentId)
-          .where('weekStartDate', isEqualTo: weekStartTimestamp)
           .where('isActive', isEqualTo: true)
-          .limit(1)
           .snapshots()
           .map((snapshot) {
             if (snapshot.docs.isEmpty) {
               return const Success(null);
             }
             try {
-              final doc = snapshot.docs.first;
+              // Sort in memory
+              final docs = snapshot.docs.toList()
+                ..sort((a, b) {
+                  final tA =
+                      (a.data()['generatedAt'] as Timestamp?)?.toDate() ??
+                      DateTime(1900);
+                  final tB =
+                      (b.data()['generatedAt'] as Timestamp?)?.toDate() ??
+                      DateTime(1900);
+                  return tB.compareTo(tA);
+                });
+
+              final doc = docs.first;
               final plan = _mapDocumentToStudyPlan(doc);
               return Success(plan);
             } catch (e) {
@@ -192,7 +198,6 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
               .collection(_studyPlansCollection)
               .where('studentId', isEqualTo: _currentStudentId)
               .where('isActive', isEqualTo: true)
-              .limit(1)
               .get();
 
           if (querySnapshot.docs.isEmpty) {
@@ -201,7 +206,19 @@ class StudyPlanRepositoryImpl implements StudyPlanRepository {
             );
           }
 
-          final docRef = querySnapshot.docs.first.reference;
+          // Sort in memory to ensure we update the latest plan
+          final docs = querySnapshot.docs.toList()
+            ..sort((a, b) {
+              final tA =
+                  (a.data()['generatedAt'] as Timestamp?)?.toDate() ??
+                  DateTime(1900);
+              final tB =
+                  (b.data()['generatedAt'] as Timestamp?)?.toDate() ??
+                  DateTime(1900);
+              return tB.compareTo(tA); // Descending
+            });
+
+          final docRef = docs.first.reference;
 
           // Update the task in the tasks array
           final updatedTasks = plan.tasks.map((t) {

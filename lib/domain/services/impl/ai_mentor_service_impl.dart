@@ -8,20 +8,24 @@
 library;
 
 import 'dart:convert';
-import 'package:firebase_ai/firebase_ai.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_vertexai/firebase_vertexai.dart';
 import 'package:studnet_ai_buddy/domain/entities/ai_insight.dart';
 import 'package:studnet_ai_buddy/domain/entities/knowledge_level.dart';
 import 'package:studnet_ai_buddy/domain/entities/risk_assessment.dart';
 import 'package:studnet_ai_buddy/domain/entities/study_plan.dart';
 import 'package:studnet_ai_buddy/domain/entities/academic_profile.dart';
-import 'package:studnet_ai_buddy/domain/entities/subject.dart'; // Added
-import 'package:studnet_ai_buddy/domain/entities/study_task.dart'; // Added
+import 'package:studnet_ai_buddy/domain/entities/subject.dart';
+import 'package:studnet_ai_buddy/domain/entities/study_task.dart';
 import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
 
 class AIMentorServiceImpl implements AIMentorService {
-  final _model = FirebaseAI.vertexAI().generativeModel(
-    model: 'gemini-2.0-flash',
-  );
+  final GenerativeModel _model;
+
+  AIMentorServiceImpl()
+    : _model = FirebaseVertexAI.instance.generativeModel(
+        model: 'gemini-2.0-flash',
+      );
 
   String _cleanJson(String text) {
     text = text.replaceAll('```json', '').replaceAll('```', '').trim();
@@ -481,43 +485,47 @@ class AIMentorServiceImpl implements AIMentorService {
     required String query,
     AcademicProfile? profile,
   }) async {
-    // Using Firebase Vertex AI logic for query responses
-    final lowerQuery = query.toLowerCase();
-
-    // Contextual hello
-    if (profile != null &&
-        (lowerQuery.contains('hello') || lowerQuery.contains('hi'))) {
-      return "Hello! How are things going at ${profile.universityName} this semester?";
-    }
-
-    if (lowerQuery.contains('flashcard')) {
-      if (lowerQuery.contains('file')) {
-        return "I don't see a file uploaded yet. Could you please upload the file you'd like to create flashcards from?";
+    try {
+      // Build context from profile
+      String context = '';
+      if (profile != null) {
+        context =
+            '''
+Student Profile Context:
+- University: ${profile.universityName}
+- Semester: ${profile.currentSemester}
+- Weak Areas: ${profile.weakAreas.join(', ')}
+- Goals: ${profile.goals.join(', ')}
+''';
       }
-      if (lowerQuery.contains('without')) {
-        return "Great! To create flashcards for your exam, could you tell me which topics or areas you'd like to focus on? Also, let me know the difficulty level (easy, medium, hard) and how many flashcards you'd prefer.";
-      }
-      return "I can help you create flashcards! Would you like to create them from a file you upload, or specify topics directly?";
-    }
 
-    if (lowerQuery.contains('specify') || lowerQuery.contains('topic')) {
-      return "Please specify the topics you'd like the flashcards to cover, and your preferred difficulty level (easy, medium, or hard). Also, let me know approximately how many flashcards you want.";
-    }
+      final prompt =
+          """
+You are an AI study buddy assistant for a student app. Be helpful, friendly, and concise.
 
-    if (lowerQuery.contains('create') && lowerQuery.contains('new')) {
-      return "Thanks for the details! I'll prepare the flashcards for you. Would you like me to add these flashcards to your existing study set or create a new one?";
-    }
+$context
 
-    if (lowerQuery.contains('help') || lowerQuery.contains('how')) {
-      return "I'd be happy to help! I can assist you with:\n"
-          "• Creating flashcards from topics or files\n"
-          "• Generating study plans\n"
-          "• Answering questions about your subjects\n"
-          "• Providing study tips and recommendations\n\n"
-          "What would you like to work on?";
-    }
+Student's Question: $query
 
-    return "I understand. Let me help you with that. Could you provide more details about what you need?";
+Provide a helpful, relevant response. If they're asking about:
+- Flashcards: Offer to help create them from topics or files
+- Study plans: Offer personalized study schedule suggestions
+- Academic help: Provide clear explanations
+- General questions: Be helpful and encouraging
+
+Keep responses concise (2-4 sentences) unless they need detailed explanations.
+Use markdown formatting for lists or emphasis where helpful.
+""";
+
+      final content = [Content.text(prompt)];
+      final response = await _model.generateContent(content);
+
+      return response.text ??
+          "I'm here to help! Could you tell me more about what you need?";
+    } catch (e) {
+      // Fallback response if AI fails
+      return "I'd love to help you! I can assist with creating flashcards, study plans, answering questions about your subjects, and providing study tips. What would you like to work on?";
+    }
   }
 
   @override
@@ -527,12 +535,8 @@ class AIMentorServiceImpl implements AIMentorService {
     required int count,
   }) async {
     try {
-      final model = FirebaseAI.vertexAI().generativeModel(
-        model: 'gemini-2.0-flash',
-      );
-
       final prompt =
-          '''
+          """
         Generate $count flashcards for the topic "$topics".
         Difficulty level: $difficulty.
         
@@ -545,10 +549,10 @@ class AIMentorServiceImpl implements AIMentorService {
         ]
         
         Ensure terms are concise questions or concepts, and definitions are clear and accurate.
-      ''';
+      """;
 
       final content = [Content.text(prompt)];
-      final response = await model.generateContent(content);
+      final response = await _model.generateContent(content);
 
       final responseText = response.text;
       if (responseText == null) throw Exception('Empty response from AI');
@@ -594,18 +598,20 @@ class AIMentorServiceImpl implements AIMentorService {
   @override
   Future<List<Map<String, dynamic>>> generateFlashcardsFromFile({
     required String fileId,
+    required String fileName,
+    required String context,
     required String difficulty,
     required int count,
+    required String? storagePath,
+    String? fileContent,
   }) async {
     try {
-      // In a real app, we would fetch the file content from Storage/Firestore first.
-      // For this demo, we'll use the file reference to simulate an AI call
-      // that "knows" what the file is about (e.g. by its name or metadata).
-
-      final prompt =
-          '''
-        Generate $count flashcards for the academic material in the file "$fileId".
-        Difficulty level: $difficulty.
+      final promptText =
+          """
+        Generate $count flashcards based on the provided file.
+        File Name: "$fileName"
+        Context/Subject: $context
+        Difficulty Level: $difficulty
         
         Return ONLY a raw JSON array with this structure:
         [
@@ -614,9 +620,28 @@ class AIMentorServiceImpl implements AIMentorService {
             "definition": "Definition or Answer"
           }
         ]
-      ''';
+        
+        Ensure terms are concise and definitions are accurate.
+      """;
 
-      final content = [Content.text(prompt)];
+      final List<Part> parts = [TextPart(promptText)];
+
+      if (storagePath != null && storagePath.isNotEmpty) {
+        final bucket = FirebaseStorage.instance.bucket;
+        // Construct the GS URI properly
+        final gsUrl = 'gs://$bucket/$storagePath';
+
+        // Determine mime type
+        final mimeType = fileName.toLowerCase().endsWith('.pdf')
+            ? 'application/pdf'
+            : 'image/jpeg';
+
+        parts.add(FileData(mimeType, gsUrl));
+      } else if (fileContent != null && fileContent.isNotEmpty) {
+        parts.add(TextPart("File Content:\n$fileContent"));
+      }
+
+      final content = [(Content.multi(parts))];
       final response = await _model.generateContent(content);
 
       final responseText = response.text;
@@ -665,7 +690,7 @@ class AIMentorServiceImpl implements AIMentorService {
   }) async {
     try {
       final prompt =
-          '''
+          """
 You are an expert educator creating quiz questions for students.
 Subject: $subject
 Topic: $topic
@@ -688,7 +713,7 @@ Requirements:
 - correctOptionIndex is 0-based (0, 1, 2, or 3)
 - Provide clear explanations for correct answers
 - Difficulty should match the requested level
-''';
+""";
 
       final content = [Content.text(prompt)];
       final response = await _model.generateContent(content);
@@ -709,7 +734,7 @@ Requirements:
         };
       }).toList();
     } catch (e) {
-      print('❌ Error generating quiz: $e');
+      // debugPrint('❌ Error generating quiz: $e');
       // Fallback to basic questions if AI fails
       return _generateMockQuizQuestions(subject, topic, count);
     }

@@ -70,7 +70,8 @@ import 'package:studnet_ai_buddy/presentation/viewmodels/quiz/quiz_viewmodel.dar
 import 'package:studnet_ai_buddy/presentation/viewmodels/planner/ai_planner_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/notes/notes_viewmodel.dart';
 
-import 'package:studnet_ai_buddy/presentation/viewmodels/library/library_viewmodel.dart'; // Added
+import 'package:studnet_ai_buddy/presentation/viewmodels/library/library_viewmodel.dart';
+import 'package:studnet_ai_buddy/presentation/viewmodels/explore/explore_viewmodel.dart'; // Added
 import 'package:studnet_ai_buddy/presentation/viewmodels/statistics/statistics_viewmodel.dart';
 
 /// Global service locator instance.
@@ -249,6 +250,7 @@ void _registerViewModels() {
       studyPlanRepository: getIt<StudyPlanRepository>(),
       focusSessionRepository: getIt<FocusSessionRepository>(),
       academicRepository: getIt<AcademicRepository>(),
+      noteRepository: getIt<NoteRepository>(),
     ),
   );
 
@@ -257,6 +259,7 @@ void _registerViewModels() {
     () => QuizViewModel(
       quizRepository: getIt<QuizRepository>(),
       flashcardRepository: getIt<FlashcardRepository>(),
+      focusSessionRepository: getIt<FocusSessionRepository>(), // Added
       knowledgeEstimationService: getIt<KnowledgeEstimationService>(),
     ),
   );
@@ -319,8 +322,14 @@ void _registerViewModels() {
     () => LibraryViewModel(
       fileRepository: getIt<FileRepository>(),
       studySetRepository: getIt<StudySetRepository>(),
+      noteRepository: getIt<NoteRepository>(),
       auth: getIt<FirebaseAuth>(),
     ),
+  );
+
+  // ExploreViewModel
+  getIt.registerFactory<ExploreViewModel>(
+    () => ExploreViewModel(getIt<StudySetRepository>()),
   );
 }
 

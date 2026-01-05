@@ -8,8 +8,11 @@ import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart'; // Added
-import 'package:studnet_ai_buddy/domain/entities/study_set.dart'; // Added
-import 'package:studnet_ai_buddy/domain/repositories/study_set_repository.dart'; // Added
+
+/// Explore screen for discovering study content.
+import 'package:provider/provider.dart'; // Added
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart';
+import 'package:studnet_ai_buddy/presentation/viewmodels/explore/explore_viewmodel.dart'; // Added
 
 /// Explore screen for discovering study content.
 class ExploreScreen extends StatefulWidget {
@@ -27,95 +30,101 @@ class _ExploreScreenState extends State<ExploreScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
-    return GradientScaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
+    // Use ChangeNotifierProvider to provide the specific viewModel
+    return ChangeNotifierProvider<ExploreViewModel>(
+      create: (_) => getIt<ExploreViewModel>()..loadStudySets(),
+      child: Consumer<ExploreViewModel>(
+        builder: (context, viewModel, child) {
+          return GradientScaffold(
+            body: SafeArea(
+              child: Column(
                 children: [
-                  const Text(
-                    'Explore',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: StudyBuddyColors.textPrimary,
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Explore',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: StudyBuddyColors.textPrimary,
+                          ),
+                        ),
+                        const Spacer(),
+                      ],
                     ),
                   ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => _showSearchDialog(context),
-                    icon: const Icon(
-                      Icons.search_rounded,
-                      color: StudyBuddyColors.textPrimary,
+                  // Search bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: StudyBuddyColors.cardBackground,
+                        borderRadius: StudyBuddyDecorations.borderRadiusFull,
+                        border: Border.all(color: StudyBuddyColors.border),
+                      ),
+                      child: TextField(
+                        onChanged: viewModel.updateSearchQuery,
+                        style: const TextStyle(
+                          color: StudyBuddyColors.textPrimary,
+                        ),
+                        decoration: const InputDecoration(
+                          hintText: 'Search study sets, topics...',
+                          hintStyle: TextStyle(
+                            color: StudyBuddyColors.textTertiary,
+                          ),
+                          border: InputBorder.none,
+                          icon: Icon(
+                            Icons.search_rounded,
+                            color: StudyBuddyColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Categories section
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+                      children: [
+                        const Text(
+                          'Categories',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: StudyBuddyColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildCategoryGrid(viewModel),
+                        const SizedBox(height: 32),
+                        const Text(
+                          'Popular Study Sets',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: StudyBuddyColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildPopularSets(viewModel),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            // Search bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: StudyBuddyColors.cardBackground,
-                  borderRadius: StudyBuddyDecorations.borderRadiusFull,
-                  border: Border.all(color: StudyBuddyColors.border),
-                ),
-                child: const TextField(
-                  style: TextStyle(color: StudyBuddyColors.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: 'Search study sets, topics...',
-                    hintStyle: TextStyle(color: StudyBuddyColors.textTertiary),
-                    border: InputBorder.none,
-                    icon: Icon(
-                      Icons.search_rounded,
-                      color: StudyBuddyColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Categories section
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
-                children: [
-                  const Text(
-                    'Categories',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: StudyBuddyColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildCategoryGrid(),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'Popular Study Sets',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: StudyBuddyColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPopularSets(),
-                ],
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildCategoryGrid() {
+  Widget _buildCategoryGrid(ExploreViewModel viewModel) {
     final categories = [
       'Computer sciences',
       'Mathematics',
@@ -136,12 +145,12 @@ class _ExploreScreenState extends State<ExploreScreen>
       ),
       itemCount: categories.length,
       itemBuilder: (ctx, index) {
-        return _buildCategoryCard(ctx, categories[index]);
+        return _buildCategoryCard(ctx, categories[index], viewModel);
       },
     );
   }
 
-  void _showSearchDialog(BuildContext context) {
+  void _showSearchDialog(BuildContext context, ExploreViewModel viewModel) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -164,7 +173,9 @@ class _ExploreScreenState extends State<ExploreScreen>
               style: const TextStyle(color: StudyBuddyColors.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Search study sets, notes, topics...',
-                hintStyle: TextStyle(color: StudyBuddyColors.textTertiary),
+                hintStyle: const TextStyle(
+                  color: StudyBuddyColors.textTertiary,
+                ),
                 prefixIcon: const Icon(
                   Icons.search_rounded,
                   color: StudyBuddyColors.textSecondary,
@@ -176,11 +187,10 @@ class _ExploreScreenState extends State<ExploreScreen>
                   borderSide: BorderSide.none,
                 ),
               ),
+              onChanged: viewModel.updateSearchQuery,
               onSubmitted: (query) {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Searching for "$query"...')),
-                );
+                viewModel.updateSearchQuery(query);
               },
             ),
             const SizedBox(height: 24),
@@ -190,34 +200,44 @@ class _ExploreScreenState extends State<ExploreScreen>
     );
   }
 
-  Widget _buildCategoryCard(BuildContext context, String category) {
+  Widget _buildCategoryCard(
+    BuildContext context,
+    String category,
+    ExploreViewModel viewModel,
+  ) {
+    final isSelected = viewModel.selectedCategory == category;
     return InkWell(
-      onTap: () {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.library,
-          arguments: {'category': category},
-        );
-      },
+      onTap: () => viewModel.toggleCategory(category),
       borderRadius: StudyBuddyDecorations.borderRadiusL,
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: StudyBuddyDecorations.cardDecoration,
+        decoration: StudyBuddyDecorations.cardDecoration.copyWith(
+          color: isSelected
+              ? StudyBuddyColors.primary.withValues(alpha: 0.1)
+              : null,
+          border: isSelected
+              ? Border.all(color: StudyBuddyColors.primary)
+              : null,
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               Icons.menu_book_rounded,
               size: 32,
-              color: StudyBuddyColors.primary,
+              color: isSelected
+                  ? StudyBuddyColors.primary
+                  : StudyBuddyColors.textSecondary,
             ),
             const SizedBox(height: 8),
             Text(
               category,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: StudyBuddyColors.textPrimary,
+                color: isSelected
+                    ? StudyBuddyColors.primary
+                    : StudyBuddyColors.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -227,130 +247,132 @@ class _ExploreScreenState extends State<ExploreScreen>
     );
   }
 
-  Widget _buildPopularSets() {
-    return FutureBuilder(
-      future: getIt<StudySetRepository>().getAllStudySets(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+  Widget _buildPopularSets(ExploreViewModel viewModel) {
+    if (viewModel.isLoading) {
+      return const Center(child: LoadingIndicator());
+    }
 
-        List<StudySet> sets = [];
-        if (snapshot.hasData) {
-          snapshot.data!.fold(
-            onSuccess: (list) => sets = list,
-            onFailure: (_) => sets = [],
-          );
-        }
+    if (viewModel.error != null) {
+      return Center(
+        child: Text(
+          viewModel.error!,
+          style: const TextStyle(color: StudyBuddyColors.error),
+        ),
+      );
+    }
 
-        if (sets.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+    final sets = viewModel.filteredSets;
+
+    if (sets.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: StudyBuddyColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.search_off_rounded,
+                size: 48,
+                color: StudyBuddyColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              viewModel.searchQuery.isNotEmpty
+                  ? 'No matches found'
+                  : 'No public study sets found',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: StudyBuddyColors.textPrimary,
+              ),
+            ),
+            if (viewModel.searchQuery.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              const Text(
+                'Try adjusting your search or filters',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: StudyBuddyColors.textSecondary,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: sets.length,
+      itemBuilder: (context, index) {
+        final set = sets[index];
+        return InkWell(
+          onTap: () {
+            Navigator.pushNamed(
+              context,
+              AppRoutes.studySetDetail,
+              arguments: {
+                'studySetId': set.id,
+                'title': set.title,
+                'category': set.category,
+              },
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: StudyBuddyDecorations.cardDecoration,
+            child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: StudyBuddyColors.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
+                    borderRadius: StudyBuddyDecorations.borderRadiusM,
                   ),
                   child: const Icon(
-                    Icons.explore_off_rounded,
-                    size: 48,
-                    color: StudyBuddyColors.textSecondary,
+                    Icons.menu_book_rounded,
+                    color: StudyBuddyColors.primary,
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'No public study sets found',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: StudyBuddyColors.textPrimary,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        set.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: StudyBuddyColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${set.flashcardCount} flashcards • ${set.category}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: StudyBuddyColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Be the first to share one!',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: StudyBuddyColors.textSecondary,
-                  ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: StudyBuddyColors.textSecondary,
                 ),
               ],
             ),
-          );
-        }
-
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: sets.length,
-          itemBuilder: (context, index) {
-            final set = sets[index];
-            return InkWell(
-              onTap: () {
-                Navigator.pushNamed(
-                  context,
-                  AppRoutes.studySetDetail,
-                  arguments: {
-                    'studySetId': set.id,
-                    'title': set.title,
-                    'category': set.category,
-                  },
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: StudyBuddyDecorations.cardDecoration,
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: StudyBuddyColors.primary.withValues(alpha: 0.1),
-                        borderRadius: StudyBuddyDecorations.borderRadiusM,
-                      ),
-                      child: const Icon(
-                        Icons.menu_book_rounded,
-                        color: StudyBuddyColors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            set.title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: StudyBuddyColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${set.flashcardCount} flashcards • ${set.category}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: StudyBuddyColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: StudyBuddyColors.textSecondary,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+          ),
         );
       },
     );

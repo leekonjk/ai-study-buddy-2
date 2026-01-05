@@ -11,6 +11,7 @@ import 'package:studnet_ai_buddy/presentation/theme/app_theme.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/quiz/quiz_viewmodel.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/common/lottie_loading.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart'; // Added import
 
 class QuizScreen extends StatelessWidget {
   final String? subjectId;
@@ -230,13 +231,15 @@ class _QuizView extends StatelessWidget {
         ),
 
         // Navigation buttons
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground,
-            border: Border(top: BorderSide(color: AppColors.border, width: 1)),
-          ),
-          child: Row(
+        SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.cardBackground,
+              border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+            ),
+            child: Row(
             children: [
               if (!state.isFirstQuestion)
                 Expanded(
@@ -268,14 +271,15 @@ class _QuizView extends StatelessWidget {
                         },
                   child: state.isSubmitting
                       ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          width: 24,
+                          height: 24,
+                          child: LoadingIndicator(size: 24),
                         )
                       : Text(state.isLastQuestion ? 'Submit' : 'Next'),
                 ),
               ),
             ],
+          ),
           ),
         ),
       ],

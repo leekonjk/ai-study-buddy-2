@@ -6,6 +6,7 @@ import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/services/local_storage_service.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/dialogs/subject_dialog.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart'; // Added import
 
 /// Preferences screen for managing subjects, study settings, and app preferences
 class PreferencesScreen extends StatefulWidget {
@@ -130,11 +131,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
               // Content
               Expanded(
                 child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: StudyBuddyColors.primary,
-                        ),
-                      )
+                    ? const Center(child: LoadingIndicator(size: 40))
                     : SingleChildScrollView(
                         padding: const EdgeInsets.all(24),
                         child: Column(

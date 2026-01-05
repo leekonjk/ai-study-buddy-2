@@ -63,7 +63,8 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
             });
           }
         },
-        onFailure: (_) {
+        onFailure: (failure) {
+          debugPrint('Failed to load subjects: ${failure.message}');
           if (mounted) {
             setState(() {
               _userSubjects = [];
@@ -74,6 +75,7 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
         },
       );
     } catch (e) {
+      debugPrint('Error loading subjects: $e');
       if (mounted) {
         setState(() {
           _userSubjects = [];
@@ -89,7 +91,10 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 400),
+        constraints: BoxConstraints(
+          maxWidth: 400,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         decoration: BoxDecoration(
           color: StudyBuddyColors.cardBackground,
           borderRadius: BorderRadius.circular(24),
@@ -101,10 +106,11 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
             ),
           ],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Header
             Container(
               padding: const EdgeInsets.all(24),
@@ -396,14 +402,8 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
                                 value: null,
                                 child: Text('No subject'),
                               ),
-                              // Load real user subjects
-                              if (_loadingSubjects)
-                                const DropdownMenuItem<String?>(
-                                  value: null,
-                                  enabled: false,
-                                  child: Text('Loading subjects...'),
-                                )
-                              else
+                              // Only show subject items when loaded and available
+                              if (!_loadingSubjects)
                                 ..._userSubjects.map((subject) {
                                   return DropdownMenuItem<String>(
                                     value: subject.id,
@@ -411,11 +411,13 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
                                   );
                                 }),
                             ],
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedSubjectId = value;
-                              });
-                            },
+                            onChanged: _loadingSubjects
+                                ? null
+                                : (value) {
+                                    setState(() {
+                                      _selectedSubjectId = value;
+                                    });
+                                  },
                           );
                         },
                       ),
@@ -488,6 +490,7 @@ class _SessionSetupDialogState extends State<SessionSetupDialog> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

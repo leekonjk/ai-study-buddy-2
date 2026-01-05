@@ -10,6 +10,7 @@ import 'package:studnet_ai_buddy/presentation/viewmodels/base_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/viewmodels/statistics/statistics_viewmodel.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart'; // Added import
 
 /// Statistics and analytics screen.
 class StatisticsScreen extends StatefulWidget {
@@ -44,7 +45,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: Consumer<StatisticsViewModel>(
               builder: (context, vm, child) {
                 if (vm.state.viewState == ViewState.loading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: LoadingIndicator());
                 }
 
                 return Column(

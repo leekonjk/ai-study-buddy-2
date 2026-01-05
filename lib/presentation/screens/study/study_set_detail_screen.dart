@@ -1,17 +1,16 @@
-/// Study Set Detail Screen
-/// Displays study set details with all flashcards and study options.
-library;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
-import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
-import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:studnet_ai_buddy/domain/entities/note.dart';
 import 'package:studnet_ai_buddy/domain/entities/flashcard.dart';
+import 'package:studnet_ai_buddy/domain/repositories/note_repository.dart';
+import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
+import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart'; // Guessing, will be verified by grep
+import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
+import 'package:studnet_ai_buddy/presentation/widgets/common/loading_indicator.dart';
+import 'package:get_it/get_it.dart';
 import 'package:studnet_ai_buddy/domain/repositories/flashcard_repository.dart';
-import 'package:studnet_ai_buddy/di/service_locator.dart';
 
-/// Screen showing study set details with flashcards.
 class StudySetDetailScreen extends StatefulWidget {
   final String studySetId;
   final String? title;
@@ -33,12 +32,16 @@ class StudySetDetailScreen extends StatefulWidget {
 class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
   // State
   List<Flashcard> _flashcards = [];
+  List<Note> _notes = [];
   bool _isLoading = true;
   String _title = '';
   String _category = '';
+  int _masteredCount = 0;
 
   // Repository
-  final _flashcardRepository = getIt<FlashcardRepository>();
+  final _flashcardRepository = GetIt.I<FlashcardRepository>();
+  final _noteRepository = GetIt.I<NoteRepository>();
+  final _auth = FirebaseAuth.instance;
 
   @override
   void initState() {
@@ -46,9 +49,11 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
     _title = widget.title ?? 'Study Set';
     _category = widget.category ?? 'General';
     _loadFlashcards();
+    _loadNotes();
   }
 
   Future<void> _loadFlashcards() async {
+    // ... existing implementation
     final result = await _flashcardRepository.getFlashcardsByStudySetId(
       widget.studySetId,
     );
@@ -56,25 +61,42 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
     if (mounted) {
       setState(() {
         result.fold(
-          onSuccess: (cards) => _flashcards = cards,
-          onFailure: (_) => _flashcards =
-              [], // Should probably show error, but empty state works for now
+          onSuccess: (cards) {
+            _flashcards = cards;
+            // Calculate mastered count based on repetitions
+            _masteredCount = cards.where((card) => card.isMastered).length;
+          },
+          onFailure: (_) {
+            _flashcards = [];
+            _masteredCount = 0;
+          },
         );
         _isLoading = false;
       });
     }
   }
 
-  // Remove demo data class reference completely and use Flashcard entity
-  // No DemoFlashcard class needed anymore
+  void _loadNotes() {
+    final userId = _auth.currentUser?.uid;
+    if (userId != null) {
+      _noteRepository.watchNotes(userId).listen((allNotes) {
+        if (mounted) {
+          setState(() {
+            _notes = allNotes
+                .where((n) => n.studySetId == widget.studySetId)
+                .toList();
+          });
+        }
+      });
+    }
+  }
 
-  // Placeholder for mastery logic (future feature)
-  int get _masteredCount => 0;
+  // ... existing methods
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: LoadingIndicator()));
     }
 
     return Scaffold(
@@ -95,7 +117,7 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Study set info card
+                      // ... existing widgets
                       _buildInfoCard().animate().fadeIn().slideY(
                         begin: 0.1,
                         end: 0,
@@ -116,6 +138,12 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
                           .slideY(begin: 0.1, end: 0),
                       const SizedBox(height: 24),
 
+                      // Notes Section
+                      if (_notes.isNotEmpty) ...[
+                        _buildNotesList(),
+                        const SizedBox(height: 24),
+                      ],
+
                       // Flashcards list
                       _buildFlashcardsList(),
                     ],
@@ -128,6 +156,16 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
       ),
     );
   }
+
+  // ... existing methods (_showEditDialog, _showMoreOptions, _buildHeader, etc.)
+
+  // ... existing methods (_buildFlashcardsList, _buildFlashcardItem) but ensure _buildFlashcardsList is NOT inside _buildNotesList
+  // Assuming replacment content context.
+
+  // Re-declare _buildFlashcardsList for context if needed, or rely on existing.
+  // I will just append _buildNotesList before the class end or wherever appropriate.
+  // Better to target the whole file structure or large chunks to be safe.
+  // I will use specific StartLine/EndLine from view_file output.
 
   void _showEditDialog() {
     final titleController = TextEditingController(text: _title);
@@ -502,12 +540,14 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
             icon: Icons.play_arrow_rounded,
             label: 'Study',
             color: StudyBuddyColors.primary,
-            onTap: () {
-              Navigator.pushNamed(
+            onTap: () async {
+              await Navigator.pushNamed(
                 context,
                 AppRoutes.flashcardStudy,
                 arguments: {'studySetId': widget.studySetId, 'title': _title},
               );
+              // Refresh progress after returning from study session
+              _loadFlashcards();
             },
           ),
         ),
@@ -517,12 +557,14 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
             icon: Icons.quiz_rounded,
             label: 'Quiz',
             color: StudyBuddyColors.secondary,
-            onTap: () {
-              Navigator.pushNamed(
+            onTap: () async {
+              await Navigator.pushNamed(
                 context,
                 AppRoutes.quizSetup,
                 arguments: {'studySetId': widget.studySetId, 'topic': _title},
               );
+              // Refresh progress after returning from quiz
+              _loadFlashcards();
             },
           ),
         ),
@@ -532,8 +574,8 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
             icon: Icons.shuffle_rounded,
             label: 'Shuffle',
             color: StudyBuddyColors.warning,
-            onTap: () {
-              Navigator.pushNamed(
+            onTap: () async {
+              await Navigator.pushNamed(
                 context,
                 AppRoutes.flashcardStudy,
                 arguments: {
@@ -542,6 +584,8 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
                   'shuffle': true,
                 },
               );
+              // Refresh progress after returning from study session
+              _loadFlashcards();
             },
           ),
         ),
@@ -698,5 +742,158 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildNotesList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Linked Notes',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: StudyBuddyColors.textPrimary,
+              ),
+            ),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.noteEditor,
+                  // note: Pass arguments if NoteEditor supports pre-filling studySetId
+                );
+              },
+              icon: const Icon(
+                Icons.add_rounded,
+                size: 18,
+                color: StudyBuddyColors.primary,
+              ),
+              label: const Text(
+                'Add Note',
+                style: TextStyle(
+                  color: StudyBuddyColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_notes.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: StudyBuddyColors.cardBackground,
+              borderRadius: StudyBuddyDecorations.borderRadiusM,
+              border: Border.all(
+                color: StudyBuddyColors.border,
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: const Column(
+              children: [
+                Icon(
+                  Icons.note_alt_outlined,
+                  color: StudyBuddyColors.textTertiary,
+                  size: 32,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'No notes linked yet',
+                  style: TextStyle(color: StudyBuddyColors.textSecondary),
+                ),
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            height: 140,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _notes.length,
+              itemBuilder: (context, index) {
+                final note = _notes[index];
+                return GestureDetector(
+                  onTap: () {
+                    // Navigate to note detail or editor
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.noteEditor,
+                      arguments: note,
+                    );
+                  },
+                  child: Container(
+                    width: 200,
+                    margin: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Color(
+                        int.parse(
+                          note.color.startsWith('0x')
+                              ? note.color
+                              : '0xFF${note.color.replaceAll('#', '')}',
+                        ),
+                      ),
+                      borderRadius: StudyBuddyDecorations.borderRadiusM,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          note.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors
+                                .white, // Notes usually have colored backgrounds, so white text is safer or need contrast check
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: Text(
+                            note.content,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _formatDate(note.createdAt),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.white60,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }

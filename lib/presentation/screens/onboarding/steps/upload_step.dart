@@ -27,136 +27,157 @@ class _UploadStepState extends State<UploadStep> {
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          const SizedBox(height: 40),
-          // Mascot and message
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const MascotWidget(
-                expression: MascotExpression.speaking,
-                size: MascotSize.medium,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ChatBubble(
-                  text: "Upload any materials you have",
-                  isUser: false,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              "We'll extract and cluster the knowledge from your materials for you to learn",
-              style: TextStyle(
-                fontSize: 14,
-                color: StudyBuddyColors.textSecondary,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Upload section
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: StudyBuddyColors.cardBackground,
-              borderRadius: StudyBuddyDecorations.borderRadiusL,
-              border: Border.all(color: StudyBuddyColors.border),
-            ),
-            child: Column(
-              children: [
-                const Text(
-                  "Upload files (PDF, PPT, DOC) here. If you don't have materials we will generate AI flashcards for your plan.",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: StudyBuddyColors.textSecondary,
-                    height: 1.5,
+          // Scrollable content
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  const SizedBox(height: 40),
+                  // Mascot and message
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const MascotWidget(
+                        expression: MascotExpression.speaking,
+                        size: MascotSize.medium,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ChatBubble(
+                          text: "Upload any materials you have",
+                          isUser: false,
+                        ),
+                      ),
+                    ],
                   ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _handleUploadFiles,
-                        icon: const Icon(
-                          Icons.upload_rounded,
-                          color: StudyBuddyColors.textPrimary,
-                        ),
-                        label: const Text(
-                          'Upload files',
-                          style: TextStyle(color: StudyBuddyColors.textPrimary),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: const BorderSide(
-                            color: StudyBuddyColors.border,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: StudyBuddyDecorations.borderRadiusM,
-                          ),
-                        ),
+                  const SizedBox(height: 16),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      "We'll extract and cluster the knowledge from your materials for you to learn",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: StudyBuddyColors.textSecondary,
+                        height: 1.5,
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _handleScanMaterial,
-                        icon: const Icon(
-                          Icons.camera_alt_rounded,
-                          color: StudyBuddyColors.textPrimary,
-                        ),
-                        label: const Text(
-                          'Scan material',
-                          style: TextStyle(color: StudyBuddyColors.textPrimary),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          side: const BorderSide(
-                            color: StudyBuddyColors.border,
+                  ),
+                  const SizedBox(height: 24),
+                  // Upload section
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: StudyBuddyColors.cardBackground,
+                      borderRadius: StudyBuddyDecorations.borderRadiusL,
+                      border: Border.all(color: StudyBuddyColors.border),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          "Upload files (PDF, PPT, DOC) here. If you don't have materials we will generate AI flashcards for your plan.",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: StudyBuddyColors.textSecondary,
+                            height: 1.5,
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: StudyBuddyDecorations.borderRadiusM,
-                          ),
+                          textAlign: TextAlign.center,
                         ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _handleUploadFiles,
+                                icon: const Icon(
+                                  Icons.upload_rounded,
+                                  color: StudyBuddyColors.textPrimary,
+                                ),
+                                label: const Text(
+                                  'Upload files',
+                                  style: TextStyle(
+                                    color: StudyBuddyColors.textPrimary,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  side: const BorderSide(
+                                    color: StudyBuddyColors.border,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        StudyBuddyDecorations.borderRadiusM,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _handleScanMaterial,
+                                icon: const Icon(
+                                  Icons.camera_alt_rounded,
+                                  color: StudyBuddyColors.textPrimary,
+                                ),
+                                label: const Text(
+                                  'Scan material',
+                                  style: TextStyle(
+                                    color: StudyBuddyColors.textPrimary,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  side: const BorderSide(
+                                    color: StudyBuddyColors.border,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        StudyBuddyDecorations.borderRadiusM,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      "The more resources you supply, the more relevant the output. You can add more materials later and we'll adjust your plan accordingly",
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: StudyBuddyColors.textTertiary,
+                        height: 1.5,
                       ),
+                      textAlign: TextAlign.center,
                     ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Uploaded files list
+                  if (_uploadedFiles.isNotEmpty) ...[
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _uploadedFiles.length,
+                      itemBuilder: (context, index) {
+                        return _buildFileCard(_uploadedFiles[index], index);
+                      },
+                    ),
+                    const SizedBox(height: 16),
                   ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
+          // Continue button pinned at bottom
           const SizedBox(height: 16),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              "The more resources you supply, the more relevant the output. You can add more materials later and we'll adjust your plan accordingly",
-              style: TextStyle(
-                fontSize: 12,
-                color: StudyBuddyColors.textTertiary,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Uploaded files list
-          if (_uploadedFiles.isNotEmpty) ...[
-            Expanded(
-              child: ListView.builder(
-                itemCount: _uploadedFiles.length,
-                itemBuilder: (context, index) {
-                  return _buildFileCard(_uploadedFiles[index], index);
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(

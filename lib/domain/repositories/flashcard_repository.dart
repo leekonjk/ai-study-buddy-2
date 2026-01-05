@@ -26,4 +26,14 @@ abstract class FlashcardRepository {
   Future<Result<List<Flashcard>>> createFlashcardsBatch(
     List<Flashcard> flashcards,
   );
+
+  /// Update flashcard progress after study session
+  /// [known] = true means user knew the answer, increases repetitions
+  /// [known] = false means user didn't know, resets to 0
+  Future<Result<void>> updateFlashcardProgress(String flashcardId, bool known);
+
+  /// Batch update progress for multiple flashcards
+  Future<Result<void>> updateFlashcardsProgressBatch(
+    Map<String, bool> flashcardResults,
+  );
 }

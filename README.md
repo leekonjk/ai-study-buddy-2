@@ -40,12 +40,18 @@
    git clone https://github.com/yourusername/student_ai_buddy.git
    ```
 
-2. **Install dependencies**
+2. **Configure Firebase**
+   
+   ⚠️ **Important**: Firebase configuration files are not included in this repository for security reasons.
+   
+   See [SETUP.md](SETUP.md) for detailed instructions on setting up Firebase configuration.
+
+3. **Install dependencies**
    ```bash
    flutter pub get
    ```
 
-3. **Run the app**
+4. **Run the app**
    ```bash
    flutter run
    ```

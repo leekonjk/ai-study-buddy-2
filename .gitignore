@@ -47,6 +47,7 @@ app.*.map.json
 # ===== SENSITIVE FILES - DO NOT COMMIT =====
 
 # Firebase configuration files (contain API keys)
+# Note: .example files with placeholders are safe to commit
 lib/firebase_options.dart
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist

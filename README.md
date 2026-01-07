@@ -97,18 +97,18 @@
    cd ai-study-buddy-2
    ```
 
-2. **Install dependencies**
+2. **Configure Firebase**
+   
+   ⚠️ **Important**: Firebase configuration files are not included in this repository for security reasons.
+   
+   See [SETUP.md](SETUP.md) for detailed instructions on setting up Firebase configuration.
+
+3. **Install dependencies**
    ```bash
    flutter pub get
    ```
 
-3. **Configure Firebase**
-   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com)
-   - Enable Authentication, Firestore, and Storage
-   - Enable Vertex AI in Google Cloud Console
-   - Download and add your `google-services.json` (Android) and `GoogleService-Info.plist` (iOS)
-
-4. **Run the app**
+3. **Run the app**
    ```bash
    flutter run
    ```

@@ -474,13 +474,27 @@ class QuizViewModel extends BaseViewModel {
           'Quiz completed! Score: ${scorePercentage.toStringAsFixed(1)}%',
     );
 
+    // Update questions with selected answers for storage
+    final questionsWithAnswers = quiz.questions.map((q) {
+      final selectedAnswer = _state.answers[q.id];
+      return QuizQuestion(
+        id: q.id,
+        questionText: q.questionText,
+        options: q.options,
+        correctOptionIndex: q.correctOptionIndex,
+        explanation: q.explanation,
+        difficulty: q.difficulty,
+        selectedOptionIndex: selectedAnswer?.toString(),
+      );
+    }).toList();
+
     // Build completed quiz with result
     final completedQuiz = Quiz(
       id: quiz.id,
       subjectId: quiz.subjectId,
       topicId: quiz.topicId,
       type: quiz.type,
-      questions: quiz.questions,
+      questions: questionsWithAnswers,
       startedAt: quiz.startedAt,
       completedAt: DateTime.now(),
       result: quizResult,

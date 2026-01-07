@@ -309,15 +309,21 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Widget _buildStudyHoursChart(StatisticsViewModel vm) {
     // Convert map to list based on week days
-    // Assume map keys are simple "Mon", "Tue" etc or we just map 0-6
-    // The current VM implementation returns Map<String, int> from repository.
-    // The repository implementation likely returns Weekday names or dates.
-    // For now, let's assume we can map it.
-    // Actually, `getWeeklyFocusStats` in repo usually returns { 'Mon': 30, 'Tue': 0 ... }
+    // The repository returns full day names like 'Monday', 'Tuesday', etc.
+    // We map them to abbreviated display names for the UI.
 
+    final fullDayNames = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
     final weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final weeklyMinutes = vm.state.weeklyStudyMinutes;
-    final List<double> weeklyHours = weekDays.map((day) {
+    final List<double> weeklyHours = fullDayNames.map((day) {
       final mins = weeklyMinutes[day] ?? 0;
       return mins / 60.0;
     }).toList();

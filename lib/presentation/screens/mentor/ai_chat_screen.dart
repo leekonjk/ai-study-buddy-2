@@ -6,15 +6,19 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:studnet_ai_buddy/di/service_locator.dart';
 import 'package:studnet_ai_buddy/domain/services/ai_mentor_service.dart';
-import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart'; // Added
-import 'package:studnet_ai_buddy/domain/entities/academic_profile.dart'; // Added
-import 'package:studnet_ai_buddy/core/utils/result.dart'; // Added
+import 'package:studnet_ai_buddy/domain/repositories/academic_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/study_set_repository.dart';
+import 'package:studnet_ai_buddy/domain/repositories/flashcard_repository.dart';
+import 'package:studnet_ai_buddy/domain/entities/academic_profile.dart';
+import 'package:studnet_ai_buddy/domain/entities/flashcard.dart';
+import 'package:studnet_ai_buddy/core/utils/result.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_colors.dart';
 import 'package:studnet_ai_buddy/presentation/theme/studybuddy_decorations.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/chat_bubble.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/gradient_scaffold.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/mascot_widget.dart';
 import 'package:studnet_ai_buddy/presentation/widgets/core/quick_action_button.dart';
+import 'package:studnet_ai_buddy/presentation/navigation/app_router.dart';
 
 /// Enhanced chat screen for AI interactions matching StudySmarter design.
 class AIChatScreen extends StatefulWidget {
@@ -34,6 +38,10 @@ class _AIChatScreenState extends State<AIChatScreen> {
   bool _isThinking = false;
   int _messageCount = 0;
   static const int _maxMessages = 10;
+
+  // Store generated flashcards for creating study sets
+  List<Map<String, dynamic>> _generatedFlashcards = [];
+  String? _currentTopic;
 
   @override
   void initState() {
@@ -67,9 +75,22 @@ class _AIChatScreenState extends State<AIChatScreen> {
           text: 'Create flashcards without a file',
           onTap: () => _handleQuickAction('Create flashcards without a file'),
         ),
+        QuickActionData(
+          text: 'Generate study set with AI',
+          onTap: () => _handleGenerateStudySet(),
+        ),
       ];
     }
-    return [];
+    return [
+      QuickActionData(
+        text: 'Create a study set',
+        onTap: () => _handleGenerateStudySet(),
+      ),
+      QuickActionData(
+        text: 'Generate flashcards',
+        onTap: () => _handleQuickAction('Generate flashcards for me'),
+      ),
+    ];
   }
 
   @override
@@ -159,12 +180,30 @@ class _AIChatScreenState extends State<AIChatScreen> {
     final lowerMessage = userMessage.toLowerCase();
     final lowerResponse = aiResponse.toLowerCase();
 
+    // Check if flashcards were generated
+    if (_generatedFlashcards.isNotEmpty) {
+      return [
+        QuickActionData(
+          text: 'Save as Study Set',
+          onTap: () => _showCreateStudySetDialog(),
+        ),
+        QuickActionData(
+          text: 'Generate more flashcards',
+          onTap: () => _handleQuickAction('Generate more flashcards'),
+        ),
+      ];
+    }
+
     if (lowerMessage.contains('flashcard') ||
         lowerResponse.contains('flashcard')) {
       return [
         QuickActionData(
           text: 'Specify topics and difficulty',
           onTap: () => _handleQuickAction('Specify topics and difficulty'),
+        ),
+        QuickActionData(
+          text: 'Generate flashcards now',
+          onTap: () => _handleGenerateFlashcards(),
         ),
       ];
     }
@@ -200,6 +239,337 @@ class _AIChatScreenState extends State<AIChatScreen> {
         );
       }
     });
+  }
+
+  /// Handle generating a study set through AI
+  void _handleGenerateStudySet() {
+    _sendMessage(
+      'I want to create a study set with flashcards. Please help me generate flashcards for ${widget.subjectTitle ?? "my topic"}.',
+      isQuickAction: true,
+    );
+  }
+
+  /// Handle generating flashcards
+  Future<void> _handleGenerateFlashcards() async {
+    setState(() {
+      _isTyping = true;
+      _isThinking = true;
+      _messages.add(
+        ChatMessageData(
+          text:
+              'Generate flashcards for ${widget.subjectTitle ?? "general topics"}',
+          isUser: true,
+        ),
+      );
+      _messageCount++;
+    });
+
+    _scrollToBottom();
+
+    try {
+      final aiService = getIt<AIMentorService>();
+      final topic = widget.subjectTitle ?? 'General Knowledge';
+      _currentTopic = topic;
+
+      // Generate flashcards using AI
+      final flashcards = await aiService.generateFlashcardsFromTopics(
+        topics: topic,
+        difficulty: 'medium',
+        count: 5,
+      );
+
+      _generatedFlashcards = flashcards;
+
+      // Format flashcards as readable message
+      final flashcardText = StringBuffer();
+      flashcardText.writeln(
+        'I\'ve generated ${flashcards.length} flashcards for you:\n',
+      );
+
+      for (int i = 0; i < flashcards.length; i++) {
+        final card = flashcards[i];
+        flashcardText.writeln('**${i + 1}. ${card['term']}**');
+        flashcardText.writeln('${card['definition']}\n');
+      }
+
+      flashcardText.writeln('\nWould you like to save these as a study set?');
+
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _isThinking = false;
+          _messages.add(
+            ChatMessageData(
+              text: flashcardText.toString(),
+              isUser: false,
+              quickActions: [
+                QuickActionData(
+                  text: 'Save as Study Set',
+                  onTap: () => _showCreateStudySetDialog(),
+                ),
+                QuickActionData(
+                  text: 'Generate different flashcards',
+                  onTap: () {
+                    _generatedFlashcards = [];
+                    _handleGenerateFlashcards();
+                  },
+                ),
+              ],
+            ),
+          );
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _isThinking = false;
+          _messages.add(
+            ChatMessageData(
+              text:
+                  'Sorry, I had trouble generating flashcards. Please try again.',
+              isUser: false,
+            ),
+          );
+        });
+        _scrollToBottom();
+      }
+    }
+  }
+
+  /// Show dialog to create study set from generated flashcards
+  void _showCreateStudySetDialog() {
+    if (_generatedFlashcards.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No flashcards to save. Generate some first!'),
+          backgroundColor: StudyBuddyColors.warning,
+        ),
+      );
+      return;
+    }
+
+    final titleController = TextEditingController(
+      text: _currentTopic ?? widget.subjectTitle ?? 'My Study Set',
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: StudyBuddyColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 24,
+          right: 24,
+          top: 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Create Study Set',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: StudyBuddyColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Save ${_generatedFlashcards.length} flashcards to a new study set',
+              style: const TextStyle(
+                fontSize: 14,
+                color: StudyBuddyColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: titleController,
+              style: const TextStyle(color: StudyBuddyColors.textPrimary),
+              decoration: InputDecoration(
+                labelText: 'Study Set Title',
+                labelStyle: const TextStyle(
+                  color: StudyBuddyColors.textSecondary,
+                ),
+                filled: true,
+                fillColor: StudyBuddyColors.backgroundLight,
+                border: OutlineInputBorder(
+                  borderRadius: StudyBuddyDecorations.borderRadiusM,
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: StudyBuddyColors.textSecondary,
+                      side: const BorderSide(color: StudyBuddyColors.border),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: StudyBuddyDecorations.borderRadiusFull,
+                      ),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _createStudySetWithFlashcards(
+                        titleController.text.trim(),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: StudyBuddyColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: StudyBuddyDecorations.borderRadiusFull,
+                      ),
+                    ),
+                    child: const Text('Create'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Create study set and save flashcards
+  Future<void> _createStudySetWithFlashcards(String title) async {
+    if (title.isEmpty) {
+      title = _currentTopic ?? 'AI Generated Study Set';
+    }
+
+    setState(() {
+      _isTyping = true;
+      _isThinking = true;
+      _messages.add(
+        ChatMessageData(text: 'Creating study set "$title"...', isUser: false),
+      );
+    });
+
+    _scrollToBottom();
+
+    try {
+      final studySetRepo = getIt<StudySetRepository>();
+      final flashcardRepo = getIt<FlashcardRepository>();
+
+      // Create study set
+      final studySetResult = await studySetRepo.createStudySet(
+        title: title,
+        category: 'AI Generated',
+        isPrivate: true,
+      );
+
+      await studySetResult.fold(
+        onSuccess: (studySet) async {
+          // Create flashcards
+          final now = DateTime.now();
+          final flashcardsToCreate = _generatedFlashcards.map((card) {
+            return Flashcard(
+              id: 'fc_${now.millisecondsSinceEpoch}_${_generatedFlashcards.indexOf(card)}',
+              studySetId: studySet.id,
+              term: card['term'] ?? '',
+              definition: card['definition'] ?? '',
+              creatorId: '', // Will be set by repository
+              createdAt: now,
+              lastUpdated: now,
+            );
+          }).toList();
+
+          final flashcardResult = await flashcardRepo.createFlashcardsBatch(
+            flashcardsToCreate,
+          );
+
+          await flashcardResult.fold(
+            onSuccess: (createdCards) async {
+              // Add flashcard IDs to study set
+              for (final card in createdCards) {
+                await studySetRepo.addFlashcard(studySet.id, card.id);
+              }
+
+              if (mounted) {
+                setState(() {
+                  _isTyping = false;
+                  _isThinking = false;
+                  _messages.add(
+                    ChatMessageData(
+                      text:
+                          '✅ Study set "$title" created successfully with ${createdCards.length} flashcards!\n\nYou can find it in your Library.',
+                      isUser: false,
+                      quickActions: [
+                        QuickActionData(
+                          text: 'Open Study Set',
+                          onTap: () => _navigateToStudySet(studySet.id, title),
+                        ),
+                        QuickActionData(
+                          text: 'Create Another',
+                          onTap: () {
+                            _generatedFlashcards = [];
+                            _handleGenerateStudySet();
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                });
+                _generatedFlashcards = [];
+                _scrollToBottom();
+              }
+            },
+            onFailure: (failure) {
+              _showErrorMessage(
+                'Failed to save flashcards: ${failure.message}',
+              );
+            },
+          );
+        },
+        onFailure: (failure) {
+          _showErrorMessage('Failed to create study set: ${failure.message}');
+        },
+      );
+    } catch (e) {
+      _showErrorMessage('An error occurred: $e');
+    }
+  }
+
+  void _showErrorMessage(String message) {
+    if (mounted) {
+      setState(() {
+        _isTyping = false;
+        _isThinking = false;
+        _messages.add(ChatMessageData(text: '❌ $message', isUser: false));
+      });
+      _scrollToBottom();
+    }
+  }
+
+  void _navigateToStudySet(String studySetId, String title) {
+    Navigator.of(context).pushNamed(
+      AppRoutes.studySetDetail,
+      arguments: {
+        'studySetId': studySetId,
+        'title': title,
+        'category': 'AI Generated',
+      },
+    );
   }
 
   void _handleFileUpload() async {

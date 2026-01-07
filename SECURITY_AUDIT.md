@@ -1,0 +1,127 @@
+# Security Audit Report
+
+## Date: 2026-01-07
+
+## Overview
+This document outlines the security vulnerabilities that were identified and remediated before making this repository public.
+
+## Vulnerabilities Identified and Fixed
+
+### 1. ✅ Exposed Firebase Service Account Private Key
+- **File**: `firestore_seed/serviceAccountKey.json`
+- **Risk Level**: CRITICAL
+- **Description**: This file contained a Firebase service account private key that grants administrative access to the Firebase project.
+- **Remediation**: 
+  - File removed from repository
+  - Template file created: `firestore_seed/serviceAccountKey.json.template`
+  - Added to `.gitignore`
+  - Created setup guide in `firestore_seed/README.md`
+
+### 2. ✅ Exposed Firebase API Keys (Android)
+- **File**: `android/app/google-services.json`
+- **Risk Level**: HIGH
+- **Description**: Contains Firebase API keys and configuration for Android.
+- **Remediation**:
+  - File removed from repository
+  - Template file created: `android/app/google-services.json.template`
+  - Added to `.gitignore`
+  - Instructions added to FIREBASE_SETUP.md
+
+### 3. ✅ Exposed Firebase Configuration (All Platforms)
+- **File**: `lib/firebase_options.dart`
+- **Risk Level**: HIGH
+- **Description**: Contains Firebase API keys for web, iOS, Android, macOS, and Windows platforms.
+- **Remediation**:
+  - File removed from repository
+  - Template file created: `lib/firebase_options.dart.template`
+  - Added to `.gitignore`
+  - Users directed to use `flutterfire configure` CLI tool
+
+## Files Added to .gitignore
+
+The following entries were added to `.gitignore` to prevent future commits of sensitive data:
+
+```
+# Firebase configuration files with sensitive data
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
+firestore_seed/serviceAccountKey.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+```
+
+## Documentation Added
+
+1. **FIREBASE_SETUP.md** - Comprehensive guide for setting up Firebase
+2. **firestore_seed/README.md** - Instructions for seeding Firestore database
+3. **Updated README.md** - Added security notices and setup instructions
+4. **Template files** - Created .template versions of all sensitive files
+
+## ⚠️ Important Notes About Git History
+
+**CRITICAL**: The sensitive files that were removed were previously committed to the git history. This means:
+
+1. The private key and API keys are still accessible in the git commit history
+2. Anyone who clones the repository can access these files from previous commits
+
+### Recommended Actions for Repository Owner
+
+To fully secure the repository, you should:
+
+1. **Revoke all exposed credentials immediately**:
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Navigate to your Firebase project
+   - Go to IAM & Admin → Service Accounts
+   - Delete or disable the exposed service account key
+   - Generate new API keys for your Firebase project
+
+2. **Create a new Firebase project** (recommended):
+   - This is the most secure option
+   - Create a fresh Firebase project
+   - Migrate your data if necessary
+   - Update your application with new credentials
+
+3. **Optionally: Clean git history** (advanced):
+   - Use tools like `git filter-branch` or `BFG Repo-Cleaner` to remove sensitive files from history
+   - **WARNING**: This requires force-pushing and will affect all collaborators
+   - See: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository
+
+## Security Best Practices Implemented
+
+- ✅ All sensitive configuration files are now gitignored
+- ✅ Template files provided for easy setup
+- ✅ Comprehensive documentation for secure setup
+- ✅ Clear warnings in README about security
+- ✅ Proper Firebase Security Rules in place (firestore.rules and storage.rules)
+
+## Additional Security Recommendations
+
+1. **Enable Firebase App Check** to protect against abuse
+2. **Review and test Firestore Security Rules** regularly
+3. **Implement rate limiting** for API endpoints
+4. **Use different Firebase projects** for development, staging, and production
+5. **Regularly rotate service account keys**
+6. **Enable 2FA** on all Google/Firebase accounts
+7. **Monitor Firebase usage** for suspicious activity
+
+## Verification
+
+- ✅ No hardcoded passwords found in source code
+- ✅ No hardcoded API keys remaining (except in .template files)
+- ✅ No private keys remaining in tracked files
+- ✅ Firestore security rules reviewed - properly configured
+- ✅ Storage security rules reviewed - properly configured
+- ✅ .gitignore updated to prevent future exposures
+
+## Status: PARTIALLY REMEDIATED
+
+While the current repository state is secure (sensitive files removed and gitignored), the **git history still contains the exposed credentials**. The repository owner must revoke/rotate the exposed credentials before making the repository public.
+
+---
+
+**Report generated by**: GitHub Copilot Security Audit
+**Date**: January 7, 2026

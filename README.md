@@ -1,5 +1,7 @@
 # Student AI Buddy 🎓🤖
 
+> ⚠️ **IMPORTANT SECURITY NOTICE**: If you previously cloned this repository, please note that sensitive Firebase credentials were removed. See [SECURITY_AUDIT.md](SECURITY_AUDIT.md) for details.
+
 **Student AI Buddy** is an intelligent Flutter application designed to help students organize their studies, stay focused, and learn more effectively using AI-powered tools.
 
 ## 🌟 Features

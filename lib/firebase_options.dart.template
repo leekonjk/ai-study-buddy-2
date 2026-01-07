@@ -41,46 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBeiqrIFi02yUGFc12T4MZ59sOq4JXMvd0',
-    appId: '1:679903159402:web:29aac7b912bdfd542a9613',
-    messagingSenderId: '679903159402',
-    projectId: 'studnet-ai-buddy',
-    authDomain: 'studnet-ai-buddy.firebaseapp.com',
-    storageBucket: 'studnet-ai-buddy.firebasestorage.app',
+    apiKey: 'YOUR_WEB_API_KEY',
+    appId: 'YOUR_WEB_APP_ID',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDZrKLasZtS6gZAdbplbBNIdFPM6PBp2XU',
-    appId: '1:679903159402:android:ffa7e1b6488db7692a9613',
-    messagingSenderId: '679903159402',
-    projectId: 'studnet-ai-buddy',
-    storageBucket: 'studnet-ai-buddy.firebasestorage.app',
+    apiKey: 'YOUR_ANDROID_API_KEY',
+    appId: 'YOUR_ANDROID_APP_ID',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyCPXMRH7LHGATqnp9Ti-7DHwAkP3RX772c',
-    appId: '1:679903159402:ios:9f8007d31280de3e2a9613',
-    messagingSenderId: '679903159402',
-    projectId: 'studnet-ai-buddy',
-    storageBucket: 'studnet-ai-buddy.firebasestorage.app',
+    apiKey: 'YOUR_IOS_API_KEY',
+    appId: 'YOUR_IOS_APP_ID',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
     iosBundleId: 'com.example.studnetAiBuddy',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyCPXMRH7LHGATqnp9Ti-7DHwAkP3RX772c',
-    appId: '1:679903159402:ios:9f8007d31280de3e2a9613',
-    messagingSenderId: '679903159402',
-    projectId: 'studnet-ai-buddy',
-    storageBucket: 'studnet-ai-buddy.firebasestorage.app',
+    apiKey: 'YOUR_MACOS_API_KEY',
+    appId: 'YOUR_MACOS_APP_ID',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
     iosBundleId: 'com.example.studnetAiBuddy',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyBeiqrIFi02yUGFc12T4MZ59sOq4JXMvd0',
-    appId: '1:679903159402:web:0ae3238037e1b7322a9613',
-    messagingSenderId: '679903159402',
-    projectId: 'studnet-ai-buddy',
-    authDomain: 'studnet-ai-buddy.firebaseapp.com',
-    storageBucket: 'studnet-ai-buddy.firebasestorage.app',
+    apiKey: 'YOUR_WINDOWS_API_KEY',
+    appId: 'YOUR_WINDOWS_APP_ID',
+    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    projectId: 'YOUR_PROJECT_ID',
+    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
+    storageBucket: 'YOUR_PROJECT_ID.firebasestorage.app',
   );
 }

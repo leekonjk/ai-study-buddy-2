@@ -29,26 +29,61 @@
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Flutter SDK installed
+- Flutter SDK installed (latest stable version)
 - VS Code or Android Studio
-- Firebase project configured
+- A Google account for Firebase
+- Dart SDK (comes with Flutter)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/student_ai_buddy.git
+   git clone https://github.com/leekonjk/ai-study-buddy-2.git
+   cd ai-study-buddy-2
    ```
 
-2. **Install dependencies**
+2. **Set up Firebase**
+   
+   ⚠️ **IMPORTANT**: You need to configure your own Firebase project before running the app.
+   
+   See the detailed setup guide: [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
+   
+   Quick setup using FlutterFire CLI:
+   ```bash
+   # Install FlutterFire CLI
+   dart pub global activate flutterfire_cli
+   
+   # Configure Firebase
+   flutterfire configure
+   ```
+   
+   This will generate the necessary configuration files:
+   - `lib/firebase_options.dart`
+   - `android/app/google-services.json`
+   - `ios/Runner/GoogleService-Info.plist` (if building for iOS)
+
+3. **Install dependencies**
    ```bash
    flutter pub get
    ```
 
-3. **Run the app**
+4. **Run the app**
    ```bash
    flutter run
    ```
+
+## 🔒 Security Notice
+
+This repository does **NOT** include Firebase configuration files for security reasons. You must set up your own Firebase project and generate your own configuration files. See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for detailed instructions.
+
+**Never commit the following files to version control:**
+- `android/app/google-services.json`
+- `ios/Runner/GoogleService-Info.plist`
+- `lib/firebase_options.dart`
+- `firestore_seed/serviceAccountKey.json`
+- Any `.env` files
+
+These files are already included in `.gitignore` to prevent accidental commits.
 
 ## 📂 Project Structure
 

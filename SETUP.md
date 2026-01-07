@@ -51,7 +51,7 @@ If you prefer manual setup or the CLI doesn't work:
 
 1. In Firebase Console, go to Project Settings
 2. Under "Your apps", click the Android icon
-3. Register your app with package name: `com.yourcompany.studentaibuddy`
+3. Register your app with your package name (e.g., `com.example.studentaibuddy`)
 4. Download `google-services.json`
 5. Copy the example template:
    ```bash
@@ -63,7 +63,7 @@ If you prefer manual setup or the CLI doesn't work:
 
 1. In Firebase Console, go to Project Settings
 2. Under "Your apps", click the iOS icon
-3. Register your app with bundle ID: `com.yourcompany.studentaibuddy`
+3. Register your app with your bundle ID (e.g., `com.example.studentaibuddy`)
 4. Download `GoogleService-Info.plist`
 5. Copy the example template:
    ```bash

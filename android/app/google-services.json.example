@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "YOUR_ANDROID_APP_ID",
         "android_client_info": {
-          "package_name": "com.yourcompany.studentaibuddy"
+          "package_name": "YOUR_PACKAGE_NAME"
         }
       },
       "oauth_client": [

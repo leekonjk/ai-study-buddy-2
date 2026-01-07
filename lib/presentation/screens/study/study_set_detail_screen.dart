@@ -37,6 +37,7 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
   String _title = '';
   String _category = '';
   int _masteredCount = 0;
+  int _learningCount = 0;
 
   // Repository
   final _flashcardRepository = GetIt.I<FlashcardRepository>();
@@ -63,12 +64,17 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
         result.fold(
           onSuccess: (cards) {
             _flashcards = cards;
-            // Calculate mastered count based on repetitions
+            // Calculate mastered count based on repetitions >= 3
             _masteredCount = cards.where((card) => card.isMastered).length;
+            // Calculate learning count (at least 1 repetition but not mastered)
+            _learningCount = cards
+                .where((card) => card.repetitions > 0 && !card.isMastered)
+                .length;
           },
           onFailure: (_) {
             _flashcards = [];
             _masteredCount = 0;
+            _learningCount = 0;
           },
         );
         _isLoading = false;
@@ -430,9 +436,12 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
   }
 
   Widget _buildProgressSection() {
-    final progress = _flashcards.isNotEmpty
-        ? _masteredCount / _flashcards.length
+    // Progress includes both mastered and partial learning progress
+    // Each mastered card = 100%, each learning card = 50% (partial credit)
+    final totalProgress = _flashcards.isNotEmpty
+        ? (_masteredCount + (_learningCount * 0.5)) / _flashcards.length
         : 0.0;
+    final displayProgress = totalProgress.clamp(0.0, 1.0);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -462,7 +471,7 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
               ),
               const Spacer(),
               Text(
-                '${(progress * 100).toInt()}%',
+                '${(displayProgress * 100).toInt()}%',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -475,7 +484,7 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
           ClipRRect(
             borderRadius: StudyBuddyDecorations.borderRadiusFull,
             child: LinearProgressIndicator(
-              value: progress,
+              value: displayProgress,
               minHeight: 8,
               backgroundColor: StudyBuddyColors.border,
               valueColor: const AlwaysStoppedAnimation<Color>(
@@ -493,7 +502,7 @@ class _StudySetDetailScreenState extends State<StudySetDetailScreen> {
                 StudyBuddyColors.success,
               ),
               _buildProgressStat(
-                '${_flashcards.length - _masteredCount}',
+                '$_learningCount',
                 'Learning',
                 StudyBuddyColors.warning,
               ),

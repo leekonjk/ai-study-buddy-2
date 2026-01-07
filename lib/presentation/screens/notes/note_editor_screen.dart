@@ -295,37 +295,40 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                     ],
 
                     // Color Picker
-                    Row(
-                      children: _colors
-                          .map(
-                            (c) => GestureDetector(
-                              onTap: () => setState(() => _selectedColor = c),
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 12),
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: c,
-                                  shape: BoxShape.circle,
-                                  border: _selectedColor == c
-                                      ? Border.all(
-                                          color: Colors.white,
-                                          width: 3,
-                                        )
-                                      : null,
-                                  boxShadow: [
-                                    if (_selectedColor == c)
-                                      BoxShadow(
-                                        color: c.withValues(alpha: 0.4),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                  ],
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: _colors
+                            .map(
+                              (c) => GestureDetector(
+                                onTap: () => setState(() => _selectedColor = c),
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 12),
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: c,
+                                    shape: BoxShape.circle,
+                                    border: _selectedColor == c
+                                        ? Border.all(
+                                            color: Colors.white,
+                                            width: 3,
+                                          )
+                                        : null,
+                                    boxShadow: [
+                                      if (_selectedColor == c)
+                                        BoxShadow(
+                                          color: c.withValues(alpha: 0.4),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
-                          )
-                          .toList(),
+                            )
+                            .toList(),
+                      ),
                     ),
                     const SizedBox(height: 24),
                     // ... existing text fields

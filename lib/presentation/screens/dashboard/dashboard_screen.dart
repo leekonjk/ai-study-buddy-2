@@ -509,9 +509,9 @@ class _ProgressSection extends StatelessWidget {
           child: CircularProgressCard(
             label: 'Tasks Today',
             current: completedTasks,
-            target: totalTasks > 0
-                ? totalTasks
-                : dailyTaskGoal, // Use preference
+            target: completedTasks > totalTasks
+                ? completedTasks
+                : (totalTasks > 0 ? totalTasks : dailyTaskGoal),
             icon: Icons.check_circle_rounded,
             color: AppColors.success,
           ),

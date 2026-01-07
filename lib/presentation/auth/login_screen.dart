@@ -91,27 +91,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _continueAsGuest() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      await FirebaseAuth.instance.signInAnonymously();
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to continue as guest';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -325,47 +304,6 @@ class _LoginScreenState extends State<LoginScreen> {
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Divider
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          color: StudyBuddyColors.border,
-                        ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'or',
-                          style: TextStyle(
-                            color: StudyBuddyColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          color: StudyBuddyColors.border,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Continue as guest
-                  TextButton(
-                    onPressed: _isLoading ? null : _continueAsGuest,
-                    child: const Text(
-                      'Continue as Guest',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: StudyBuddyColors.textSecondary,
                       ),
                     ),
                   ),

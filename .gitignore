@@ -43,3 +43,43 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ===== SENSITIVE FILES - DO NOT COMMIT =====
+
+# Firebase configuration files (contain API keys)
+lib/firebase_options.dart
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+ios/firebase_app_id_file.json
+
+# Firebase service account keys
+**/serviceAccountKey.json
+**/service-account*.json
+**/*-firebase-adminsdk-*.json
+
+# Android signing keys
+**/*.jks
+**/*.keystore
+android/key.properties
+
+# Environment files
+.env
+.env.*
+*.env
+
+# Local configuration
+local.properties
+
+# Node modules (firestore_seed folder)
+**/node_modules/
+**/package-lock.json
+
+# Secrets and credentials
+**/secrets/
+**/credentials/
+**/*secret*
+**/*credential*
+
+# macOS keychain
+*.keychain
+*.keychain-db
